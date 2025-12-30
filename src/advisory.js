@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { supabase } from '../config/supabase.js';
+import { supabase } from '../config/railway-db.js';
 
 export const callMCPAdvisory = async (messageData) => {
   // Use existing MCP Railway service
