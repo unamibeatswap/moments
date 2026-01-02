@@ -27,14 +27,13 @@ NODE_ENV=production
 
 ## 📋 **Production Checklist**
 
-### **Database Setup** (Required First)
-```bash
-# Run in Supabase SQL Editor:
-1. supabase/schema.sql           # Base tables
-2. supabase/moments-schema.sql   # Moments features  
-3. supabase/enhanced-schema.sql  # Enhanced constraints
-4. supabase/system-settings.sql  # Settings control
+### **Database Setup** (Safe Migration)
+```sql
+-- Run ONLY this file in Supabase SQL Editor:
+supabase/safe-migration.sql  # Handles existing tables safely
 ```
+
+**Note**: This migration script safely adds only missing tables and columns without conflicts.
 
 ### **Pre-Deployment**
 - [ ] Database schemas applied ⬆️
