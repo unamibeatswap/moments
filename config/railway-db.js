@@ -13,31 +13,42 @@ const pool = new Pool({
 // Supabase-compatible interface
 export const supabase = {
   from: (table) => ({
-    insert: async (data) => {
-      try {
-        const columns = Object.keys(data[0] || data).join(', ');
-        const values = Array.isArray(data) ? data : [data];
-        const placeholders = values.map((_, i) => 
-          `(${Object.keys(values[i]).map((_, j) => `$${i * Object.keys(values[i]).length + j + 1}`).join(', ')})`
-        ).join(', ');
-        
-        const flatValues = values.flatMap(obj => Object.values(obj));
-        const query = `INSERT INTO ${table} (${columns}) VALUES ${placeholders} RETURNING *`;
-        
-        const result = await pool.query(query, flatValues);
-        return { data: result.rows, error: null };
-      } catch (error) {
-        console.error(`Insert error in ${table}:`, error.message);
-        return { data: null, error };
-      }
+    insert: function(data) {
+      const insertQuery = {
+        select: function() {
+          return {
+            single: async () => {
+              try {
+                const record = Array.isArray(data) ? data[0] : data;
+                const columns = Object.keys(record).join(', ');
+                const values = Object.values(record);
+                const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+                
+                const query = `INSERT INTO ${table} (${columns}) VALUES (${placeholders}) RETURNING *`;
+                const result = await pool.query(query, values);
+                return { data: result.rows[0], error: null };
+              } catch (error) {
+                console.error(`Insert error in ${table}:`, error.message);
+                return { data: null, error };
+              }
+            }
+          };
+        }
+      };
+      return insertQuery;
     },
-    select: async (columns = '*') => {
-      try {
-        const result = await pool.query(`SELECT ${columns} FROM ${table} LIMIT 10`);
-        return { data: result.rows, error: null };
-      } catch (error) {
-        return { data: [], error };
-      }
+    select: function(columns = '*') {
+      const query = {
+        limit: async (count) => {
+          try {
+            const result = await pool.query(`SELECT ${columns} FROM ${table} LIMIT ${count}`);
+            return { data: result.rows, error: null };
+          } catch (error) {
+            return { data: [], error };
+          }
+        }
+      };
+      return query;
     },
     update: async (data) => ({ data: [], error: null }),
     eq: function() { return this; },

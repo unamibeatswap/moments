@@ -3,7 +3,8 @@ import { sendMessage } from '../config/whatsapp.js';
 import { processMedia } from './media.js';
 import { detectLanguage } from './language.js';
 import { callMCPAdvisory } from './advisory.js';
-import { processTrustSignals, handleOptOut } from './trust.js';
+import { processTrustSignals } from './trust.js';
+import { handleUserOptOut, handleUserOptIn } from './broadcast.js';
 import axios from 'axios';
 
 export const handleWebhook = async (req, res) => {
@@ -40,7 +41,13 @@ const processIncomingMessage = async (message) => {
     
     // Handle STOP/opt-out
     if (type === 'text' && /^(stop|unsubscribe|opt.?out)$/i.test(message.text?.body)) {
-      await handleOptOut(from);
+      await handleUserOptOut(from);
+      return;
+    }
+    
+    // Handle START/opt-in
+    if (type === 'text' && /^(start|subscribe|opt.?in|join)$/i.test(message.text?.body)) {
+      await handleUserOptIn(from);
       return;
     }
     

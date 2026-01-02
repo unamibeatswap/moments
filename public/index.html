@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unami Foundation Moments - Admin</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; line-height: 1.5; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
+        .header { background: #2563eb; color: white; padding: 1rem 0; margin-bottom: 1.5rem; position: sticky; top: 0; z-index: 100; }
+        .header h1 { text-align: center; font-size: clamp(1.25rem, 4vw, 1.5rem); margin-bottom: 0.5rem; }
+        .nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; }
+        .nav button { background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.5rem 0.75rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; transition: all 0.2s; }
+        .nav button.active { background: rgba(255,255,255,0.3); }
+        .nav button:hover { background: rgba(255,255,255,0.25); }
+        .section { display: none; }
+        .section.active { display: block; }
+        .card { background: white; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.25rem; font-weight: 500; font-size: 0.875rem; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 1rem; }
+        .form-group textarea { min-height: 100px; resize: vertical; }
+        .btn { background: #2563eb; color: white; border: none; padding: 0.75rem 1rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; }
+        .btn:hover { background: #1d4ed8; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-sm { padding: 0.5rem 0.75rem; font-size: 0.75rem; }
+        .btn-danger { background: #dc2626; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-success { background: #16a34a; }
+        .btn-success:hover { background: #15803d; }
+        .btn-secondary { background: #6b7280; }
+        .btn-secondary:hover { background: #4b5563; }
+        .moment-item { border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; margin-bottom: 0.75rem; }
+        .moment-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; gap: 1rem; }
+        .moment-info { flex: 1; min-width: 0; }
+        .moment-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .moment-title { font-weight: 600; color: #1f2937; margin-bottom: 0.25rem; word-break: break-word; }
+        .moment-meta { font-size: 0.75rem; color: #6b7280; }
+        .moment-content { margin-bottom: 0.75rem; color: #374151; font-size: 0.875rem; }
+        .status-badge { padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
+        .status-draft { background: #f3f4f6; color: #374151; }
+        .status-scheduled { background: #fef3c7; color: #92400e; }
+        .status-broadcasted { background: #d1fae5; color: #065f46; }
+        .status-cancelled { background: #fee2e2; color: #991b1b; }
+        .analytics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
+        .stat-card { text-align: center; padding: 1rem; }
+        .stat-number { font-size: clamp(1.5rem, 6vw, 2rem); font-weight: bold; color: #2563eb; }
+        .stat-label { color: #6b7280; margin-top: 0.25rem; font-size: 0.875rem; }
+        .loading { text-align: center; padding: 2rem; color: #6b7280; }
+        .error { background: #fef2f2; color: #dc2626; padding: 0.75rem; border-radius: 0.375rem; margin-bottom: 1rem; font-size: 0.875rem; }
+        .success { background: #f0fdf4; color: #16a34a; padding: 0.75rem; border-radius: 0.375rem; margin-bottom: 1rem; font-size: 0.875rem; }
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; padding: 1rem; }
+        .modal.active { display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: white; border-radius: 0.5rem; padding: 1.5rem; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .modal-title { font-size: 1.125rem; font-weight: 600; }
+        .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280; }
+        .filters { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+        .filter-select { padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem; }
+        .search-box { width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; margin-bottom: 1rem; }
+        .empty-state { text-align: center; padding: 3rem 1rem; color: #6b7280; }
+        .empty-state-icon { font-size: 3rem; margin-bottom: 1rem; }
+        .pagination { display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem; }
+        .page-btn { padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; background: white; border-radius: 0.375rem; cursor: pointer; }
+        .page-btn.active { background: #2563eb; color: white; border-color: #2563eb; }
+        @media (max-width: 768px) {
+            .container { padding: 0.5rem; }
+            .card { padding: 0.75rem; }
+            .moment-header { flex-direction: column; align-items: stretch; }
+            .moment-actions { justify-content: flex-start; }
+            .analytics-grid { grid-template-columns: repeat(2, 1fr); }
+            .nav { gap: 0.25rem; }
+            .nav button { padding: 0.5rem; font-size: 0.75rem; }
+            .modal-content { margin: 0.5rem; padding: 1rem; }
+        }
+        @media (max-width: 480px) {
+            .analytics-grid { grid-template-columns: 1fr; }
+            .filters { flex-direction: column; }
+            .filter-select { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1>📢 Unami Foundation Moments</h1>
+            <div class="nav">
+                <button onclick="showSection('dashboard')" class="active">Dashboard</button>
+                <button onclick="showSection('moments')">Moments</button>
+                <button onclick="showSection('create')">Create</button>
+                <button onclick="showSection('sponsors')">Sponsors</button>
+                <button onclick="showSection('broadcasts')">Broadcasts</button>
+                <button onclick="showSection('moderation')">Moderation</button>
+                <button onclick="showSection('subscribers')">Subscribers</button>
+                <button onclick="showSection('settings')">Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Dashboard Section -->
+        <div id="dashboard" class="section active">
+            <div class="card">
+                <h2>Analytics Overview</h2>
+                <div id="analytics" class="analytics-grid">
+                    <div class="loading">Loading analytics...</div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Recent Activity</h3>
+                <div id="recent-activity">
+                    <div class="loading">Loading recent activity...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Moments List Section -->
+        <div id="moments" class="section">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                    <h2>All Moments</h2>
+                    <button class="btn" onclick="showSection('create')">+ New Moment</button>
+                </div>
+                <div class="filters">
+                    <select class="filter-select" id="status-filter" onchange="filterMoments()">
+                        <option value="">All Status</option>
+                        <option value="draft">Draft</option>
+                        <option value="scheduled">Scheduled</option>
+                        <option value="broadcasted">Broadcasted</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                    <select class="filter-select" id="region-filter" onchange="filterMoments()">
+                        <option value="">All Regions</option>
+                        <option value="KZN">KwaZulu-Natal</option>
+                        <option value="WC">Western Cape</option>
+                        <option value="GP">Gauteng</option>
+                        <option value="EC">Eastern Cape</option>
+                        <option value="FS">Free State</option>
+                        <option value="LP">Limpopo</option>
+                        <option value="MP">Mpumalanga</option>
+                        <option value="NC">Northern Cape</option>
+                        <option value="NW">North West</option>
+                    </select>
+                    <select class="filter-select" id="category-filter" onchange="filterMoments()">
+                        <option value="">All Categories</option>
+                        <option value="Education">Education</option>
+                        <option value="Safety">Safety</option>
+                        <option value="Culture">Culture</option>
+                        <option value="Opportunity">Opportunity</option>
+                        <option value="Events">Events</option>
+                        <option value="Health">Health</option>
+                        <option value="Technology">Technology</option>
+                    </select>
+                </div>
+                <input type="text" class="search-box" id="search-box" placeholder="Search moments..." oninput="filterMoments()">
+                <div id="moments-list">
+                    <div class="loading">Loading moments...</div>
+                </div>
+                <div id="moments-pagination" class="pagination"></div>
+            </div>
+        </div>
+
+        <!-- Create Moment Section -->
+        <div id="create" class="section">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h2 id="create-title">Create New Moment</h2>
+                    <button class="btn btn-secondary" onclick="showSection('moments')">← Back</button>
+                </div>
+                <div id="create-message"></div>
+                <form id="create-form">
+                    <input type="hidden" id="edit-id" name="id">
+                    <div class="form-group">
+                        <label>Title *</label>
+                        <input type="text" name="title" required maxlength="200" placeholder="Enter moment title...">
+                    </div>
+                    <div class="form-group">
+                        <label>Content *</label>
+                        <textarea name="content" required maxlength="2000" placeholder="Write your moment content..."></textarea>
+                        <small style="color: #6b7280;">Characters: <span id="char-count">0</span>/2000</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Region *</label>
+                        <select name="region" required>
+                            <option value="">Select Region</option>
+                            <option value="KZN">KwaZulu-Natal</option>
+                            <option value="WC">Western Cape</option>
+                            <option value="GP">Gauteng</option>
+                            <option value="EC">Eastern Cape</option>
+                            <option value="FS">Free State</option>
+                            <option value="LP">Limpopo</option>
+                            <option value="MP">Mpumalanga</option>
+                            <option value="NC">Northern Cape</option>
+                            <option value="NW">North West</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Category *</label>
+                        <select name="category" required>
+                            <option value="">Select Category</option>
+                            <option value="Education">Education</option>
+                            <option value="Safety">Safety</option>
+                            <option value="Culture">Culture</option>
+                            <option value="Opportunity">Opportunity</option>
+                            <option value="Events">Events</option>
+                            <option value="Health">Health</option>
+                            <option value="Technology">Technology</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Sponsor</label>
+                        <select name="sponsor_id" id="sponsor-select">
+                            <option value="">No Sponsor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>PWA Link (optional)</label>
+                        <input type="url" name="pwa_link" placeholder="https://...">
+                    </div>
+                    <div class="form-group">
+                        <label>Schedule For (optional)</label>
+                        <input type="datetime-local" name="scheduled_at">
+                        <small style="color: #6b7280;">Leave empty to save as draft</small>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button type="submit" class="btn" id="submit-btn">Create Moment</button>
+                        <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Sponsors Section -->
+        <div id="sponsors" class="section">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                    <h2>Sponsors</h2>
+                    <button class="btn" onclick="openSponsorModal()">+ New Sponsor</button>
+                </div>
+                <div id="sponsors-list">
+                    <div class="loading">Loading sponsors...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Broadcasts Section -->
+        <div id="broadcasts" class="section">
+            <div class="card">
+                <h2>Broadcast History</h2>
+                <div id="broadcasts-list">
+                    <div class="loading">Loading broadcasts...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Moderation Section -->
+        <div id="moderation" class="section">
+            <div class="card">
+                <h2>Content Moderation</h2>
+                <div class="filters">
+                    <select class="filter-select" id="moderation-filter" onchange="loadModeration()">
+                        <option value="all">All Content</option>
+                        <option value="flagged">Flagged Only</option>
+                        <option value="escalated">Escalated</option>
+                        <option value="reviewed">Reviewed</option>
+                    </select>
+                </div>
+                <div id="moderation-list">
+                    <div class="loading">Loading flagged content...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Subscribers Section -->
+        <div id="subscribers" class="section">
+            <div class="card">
+                <h2>Subscriber Management</h2>
+                <div class="filters">
+                    <select class="filter-select" id="subscriber-filter" onchange="loadSubscribers()">
+                        <option value="all">All Subscribers</option>
+                        <option value="active">Active Only</option>
+                        <option value="inactive">Opted Out</option>
+                    </select>
+                </div>
+                <div id="subscribers-list">
+                    <div class="loading">Loading subscribers...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Section -->
+        <div id="settings" class="section">
+            <div class="card">
+                <h2>System Settings</h2>
+                <div id="settings-message"></div>
+                <div id="settings-list">
+                    <div class="loading">Loading settings...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="sponsor-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="sponsor-modal-title">Create Sponsor</h3>
+                <button class="close-btn" onclick="closeSponsorModal()">&times;</button>
+            </div>
+            <div id="sponsor-message"></div>
+            <form id="sponsor-form">
+                <input type="hidden" id="sponsor-edit-id" name="id">
+                <div class="form-group">
+                    <label>Name *</label>
+                    <input type="text" name="name" required placeholder="sponsor_name">
+                </div>
+                <div class="form-group">
+                    <label>Display Name *</label>
+                    <input type="text" name="display_name" required placeholder="Sponsor Display Name">
+                </div>
+                <div class="form-group">
+                    <label>Contact Email</label>
+                    <input type="email" name="contact_email" placeholder="contact@sponsor.com">
+                </div>
+                <div class="form-group">
+                    <label>Website URL</label>
+                    <input type="url" name="website_url" placeholder="https://sponsor.com">
+                </div>
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeSponsorModal()">Cancel</button>
+                    <button type="submit" class="btn" id="sponsor-submit-btn">Create Sponsor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirm Action</h3>
+                <button class="close-btn" onclick="closeConfirmModal()">&times;</button>
+            </div>
+            <p id="confirm-message">Are you sure?</p>
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
+                <button class="btn btn-secondary" onclick="closeConfirmModal()">Cancel</button>
+                <button class="btn btn-danger" id="confirm-btn" onclick="confirmAction()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let currentPage = 1;
+        let allMoments = [];
+        let filteredMoments = [];
+        let confirmCallback = null;
+        
+        // Navigation
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+            event.target.classList.add('active');
+            
+            // Load data for section
+            switch(sectionId) {
+                case 'dashboard': loadAnalytics(); loadRecentActivity(); break;
+                case 'moments': loadMoments(); break;
+                case 'sponsors': loadSponsors(); break;
+                case 'broadcasts': loadBroadcasts(); break;
+                case 'moderation': loadModeration(); break;
+                case 'subscribers': loadSubscribers(); break;
+                case 'settings': loadSettings(); break;
+                case 'create': loadSponsors(); break;
+            }
+        }
+
+        // Load analytics
+        async function loadAnalytics() {
+            try {
+                const response = await fetch(`${API_BASE}/admin/analytics`);
+                const data = await response.json();
+                
+                document.getElementById('analytics').innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-number">${data.totalMoments || 0}</div>
+                        <div class="stat-label">Total Moments</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.activeSubscribers || 0}</div>
+                        <div class="stat-label">Active Subscribers</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.totalBroadcasts || 0}</div>
+                        <div class="stat-label">Broadcasts Sent</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.successRate || 0}%</div>
+                        <div class="stat-label">Success Rate</div>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('analytics').innerHTML = '<div class="error">Failed to load analytics</div>';
+            }
+        }
+
+        // Load recent activity
+        async function loadRecentActivity() {
+            try {
+                const response = await fetch(`${API_BASE}/admin/moments?limit=5`);
+                const data = await response.json();
+                
+                if (data.moments && data.moments.length > 0) {
+                    const html = data.moments.map(moment => `
+                        <div style="padding: 0.75rem; border-left: 3px solid #2563eb; margin-bottom: 0.5rem; background: #f8fafc;">
+                            <div style="font-weight: 500; margin-bottom: 0.25rem;">${moment.title}</div>
+                            <div style="font-size: 0.75rem; color: #6b7280;">
+                                ${moment.region} • ${moment.category} • ${new Date(moment.created_at).toLocaleDateString()}
+                            </div>
+                        </div>
+                    `).join('');
+                    document.getElementById('recent-activity').innerHTML = html;
+                } else {
+                    document.getElementById('recent-activity').innerHTML = '<div class="empty-state">No recent activity</div>';
+                }
+            } catch (error) {
+                document.getElementById('recent-activity').innerHTML = '<div class="error">Failed to load recent activity</div>';
+            }
+        }
+
+        // Load moments with filtering and pagination
+        async function loadMoments(page = 1) {
+            try {
+                const response = await fetch(`${API_BASE}/admin/moments?page=${page}&limit=10`);
+                const data = await response.json();
+                allMoments = data.moments || [];
+                currentPage = page;
+                filterMoments();
+            } catch (error) {
+                document.getElementById('moments-list').innerHTML = '<div class="error">Failed to load moments</div>';
+            }
+        }
+
+        function filterMoments() {
+            const statusFilter = document.getElementById('status-filter').value;
+            const regionFilter = document.getElementById('region-filter').value;
+            const categoryFilter = document.getElementById('category-filter').value;
+            const searchTerm = document.getElementById('search-box').value.toLowerCase();
+
+            filteredMoments = allMoments.filter(moment => {
+                const matchesStatus = !statusFilter || moment.status === statusFilter;
+                const matchesRegion = !regionFilter || moment.region === regionFilter;
+                const matchesCategory = !categoryFilter || moment.category === categoryFilter;
+                const matchesSearch = !searchTerm || 
+                    moment.title.toLowerCase().includes(searchTerm) ||
+                    moment.content.toLowerCase().includes(searchTerm);
+                
+                return matchesStatus && matchesRegion && matchesCategory && matchesSearch;
+            });
+
+            displayMoments();
+        }
+
+        function displayMoments() {
+            if (filteredMoments.length === 0) {
+                document.getElementById('moments-list').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📝</div>
+                        <div>No moments found</div>
+                        <button class="btn" onclick="showSection('create')" style="margin-top: 1rem;">Create First Moment</button>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = filteredMoments.map(moment => `
+                <div class="moment-item">
+                    <div class="moment-header">
+                        <div class="moment-info">
+                            <div class="moment-title">${moment.title}</div>
+                            <div class="moment-meta">
+                                ${moment.region} • ${moment.category} • ${new Date(moment.created_at).toLocaleDateString()}
+                                ${moment.is_sponsored ? ` • Sponsored by ${moment.sponsors?.display_name || 'Unknown'}` : ''}
+                            </div>
+                        </div>
+                        <div class="moment-actions">
+                            <span class="status-badge status-${moment.status}">${moment.status}</span>
+                            ${moment.status === 'draft' ? `<button class="btn btn-sm btn-success" onclick="broadcastMoment('${moment.id}')">Broadcast</button>` : ''}
+                            ${moment.status !== 'broadcasted' ? `<button class="btn btn-sm" onclick="editMoment('${moment.id}')">Edit</button>` : ''}
+                            <button class="btn btn-sm btn-danger" onclick="deleteMoment('${moment.id}')">Delete</button>
+                        </div>
+                    </div>
+                    <div class="moment-content">${moment.content.substring(0, 200)}${moment.content.length > 200 ? '...' : ''}</div>
+                    ${moment.scheduled_at ? `<div style="font-size: 0.75rem; color: #2563eb; margin-top: 0.5rem;">Scheduled: ${new Date(moment.scheduled_at).toLocaleString()}</div>` : ''}
+                </div>
+            `).join('');
+            
+            document.getElementById('moments-list').innerHTML = html;
+        }
+
+        // Edit moment
+        async function editMoment(id) {
+            const moment = allMoments.find(m => m.id === id);
+            if (!moment) return;
+
+            // Populate form
+            document.getElementById('edit-id').value = id;
+            document.querySelector('[name="title"]').value = moment.title;
+            document.querySelector('[name="content"]').value = moment.content;
+            document.querySelector('[name="region"]').value = moment.region;
+            document.querySelector('[name="category"]').value = moment.category;
+            document.querySelector('[name="sponsor_id"]').value = moment.sponsor_id || '';
+            document.querySelector('[name="pwa_link"]').value = moment.pwa_link || '';
+            if (moment.scheduled_at) {
+                const date = new Date(moment.scheduled_at);
+                document.querySelector('[name="scheduled_at"]').value = date.toISOString().slice(0, 16);
+            }
+
+            // Update UI
+            document.getElementById('create-title').textContent = 'Edit Moment';
+            document.getElementById('submit-btn').textContent = 'Update Moment';
+            updateCharCount();
+            showSection('create');
+        }
+
+        // Delete moment
+        function deleteMoment(id) {
+            const moment = allMoments.find(m => m.id === id);
+            showConfirm(`Delete "${moment.title}"?`, async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/admin/moments/${id}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (response.ok) {
+                        showSuccess('Moment deleted successfully');
+                        loadMoments(currentPage);
+                    } else {
+                        const error = await response.json();
+                        showError(error.error || 'Failed to delete moment');
+                    }
+                } catch (error) {
+                    showError('Failed to delete moment');
+                }
+            });
+        }
+
+        // Load sponsors
+        async function loadSponsors() {
+            try {
+                const response = await fetch(`${API_BASE}/admin/sponsors`);
+                const data = await response.json();
+                
+                // Update sponsor select in create form
+                const sponsorSelect = document.getElementById('sponsor-select');
+                sponsorSelect.innerHTML = '<option value="">No Sponsor</option>' + 
+                    (data.sponsors || []).map(s => `<option value="${s.id}">${s.display_name}</option>`).join('');
+                
+                // Show sponsors list
+                if (data.sponsors && data.sponsors.length > 0) {
+                    const html = data.sponsors.map(sponsor => `
+                        <div class="moment-item">
+                            <div class="moment-header">
+                                <div class="moment-info">
+                                    <div class="moment-title">${sponsor.display_name}</div>
+                                    <div class="moment-meta">${sponsor.name} • ${sponsor.contact_email || 'No email'}</div>
+                                </div>
+                                <div class="moment-actions">
+                                    <button class="btn btn-sm" onclick="editSponsor('${sponsor.id}')">Edit</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteSponsor('${sponsor.id}')">Delete</button>
+                                </div>
+                            </div>
+                            ${sponsor.website_url ? `<div style="font-size: 0.875rem; color: #2563eb;"><a href="${sponsor.website_url}" target="_blank">${sponsor.website_url}</a></div>` : ''}
+                        </div>
+                    `).join('');
+                    document.getElementById('sponsors-list').innerHTML = html;
+                } else {
+                    document.getElementById('sponsors-list').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🏢</div>
+                            <div>No sponsors found</div>
+                            <button class="btn" onclick="openSponsorModal()" style="margin-top: 1rem;">Add First Sponsor</button>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('sponsors-list').innerHTML = '<div class="error">Failed to load sponsors</div>';
+            }
+        }
+
+        // Sponsor modal functions
+        function openSponsorModal(id = null) {
+            if (id) {
+                // Edit mode - populate form
+                // This would fetch sponsor data and populate form
+                document.getElementById('sponsor-modal-title').textContent = 'Edit Sponsor';
+                document.getElementById('sponsor-submit-btn').textContent = 'Update Sponsor';
+            } else {
+                // Create mode
+                document.getElementById('sponsor-form').reset();
+                document.getElementById('sponsor-modal-title').textContent = 'Create Sponsor';
+                document.getElementById('sponsor-submit-btn').textContent = 'Create Sponsor';
+            }
+            document.getElementById('sponsor-modal').classList.add('active');
+        }
+
+        function closeSponsorModal() {
+            document.getElementById('sponsor-modal').classList.remove('active');
+            document.getElementById('sponsor-form').reset();
+            document.getElementById('sponsor-message').innerHTML = '';
+        }
+
+        function editSponsor(id) {
+            openSponsorModal(id);
+        }
+
+        function deleteSponsor(id) {
+            showConfirm('Delete this sponsor?', async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/admin/sponsors/${id}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (response.ok) {
+                        showSuccess('Sponsor deleted successfully');
+                        loadSponsors();
+                    } else {
+                        showError('Failed to delete sponsor');
+                    }
+                } catch (error) {
+                    showError('Failed to delete sponsor');
+                }
+            });
+        }
+
+        // Load broadcasts
+        async function loadBroadcasts() {
+            try {
+                const response = await fetch(`${API_BASE}/admin/broadcasts`);
+                const data = await response.json();
+                
+                if (data.broadcasts && data.broadcasts.length > 0) {
+                    const html = data.broadcasts.map(broadcast => `
+                        <div class="moment-item">
+                            <div class="moment-header">
+                                <div class="moment-info">
+                                    <div class="moment-title">Broadcast #${broadcast.id.slice(0, 8)}</div>
+                                    <div class="moment-meta">
+                                        ${new Date(broadcast.broadcast_started_at).toLocaleString()}
+                                        ${broadcast.broadcast_completed_at ? ` - ${new Date(broadcast.broadcast_completed_at).toLocaleString()}` : ''}
+                                    </div>
+                                </div>
+                                <div class="moment-actions">
+                                    <span class="status-badge status-${broadcast.status}">${broadcast.status}</span>
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 1rem; margin-top: 0.5rem;">
+                                <div><strong>${broadcast.recipient_count}</strong><br><small>Recipients</small></div>
+                                <div><strong>${broadcast.success_count}</strong><br><small>Success</small></div>
+                                <div><strong>${broadcast.failure_count}</strong><br><small>Failed</small></div>
+                                <div><strong>${broadcast.recipient_count > 0 ? Math.round(broadcast.success_count / broadcast.recipient_count * 100) : 0}%</strong><br><small>Success Rate</small></div>
+                            </div>
+                        </div>
+                    `).join('');
+                    document.getElementById('broadcasts-list').innerHTML = html;
+                } else {
+                    document.getElementById('broadcasts-list').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📡</div>
+                            <div>No broadcasts yet</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('broadcasts-list').innerHTML = '<div class="error">Failed to load broadcasts</div>';
+            }
+        }
+
+        // Load moderation queue
+        async function loadModeration() {
+            try {
+                const filter = document.getElementById('moderation-filter')?.value || 'all';
+                const response = await fetch(`${API_BASE}/admin/moderation?filter=${filter}`);
+                const data = await response.json();
+                
+                if (data.flaggedMessages && data.flaggedMessages.length > 0) {
+                    const html = data.flaggedMessages.map(msg => `
+                        <div class="moment-item">
+                            <div class="moment-header">
+                                <div class="moment-info">
+                                    <div class="moment-title">Message from ${msg.from_number.replace(/\d(?=\d{4})/g, '*')}</div>
+                                    <div class="moment-meta">${new Date(msg.created_at).toLocaleString()}</div>
+                                </div>
+                                <div class="moment-actions">
+                                    <button class="btn btn-sm btn-success">Approve</button>
+                                    <button class="btn btn-sm btn-danger">Flag</button>
+                                </div>
+                            </div>
+                            <div class="moment-content">${msg.content}</div>
+                            <div style="margin-top: 0.75rem; font-size: 0.75rem; color: #dc2626;">
+                                Flagged: ${msg.advisories?.map(a => `${a.advisory_type} (${Math.round(a.confidence * 100)}%)`).join(', ')}
+                            </div>
+                        </div>
+                    `).join('');
+                    document.getElementById('moderation-list').innerHTML = html;
+                } else {
+                    document.getElementById('moderation-list').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">✅</div>
+                            <div>No flagged content</div>
+                            <div style="font-size: 0.875rem; color: #6b7280; margin-top: 0.5rem;">All content is clean!</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('moderation-list').innerHTML = '<div class="error">Failed to load moderation queue</div>';
+            }
+        }
+
+        // Load subscribers
+        async function loadSubscribers() {
+            try {
+                const filter = document.getElementById('subscriber-filter')?.value || 'all';
+                const response = await fetch(`${API_BASE}/admin/subscribers?filter=${filter}`);
+                const data = await response.json();
+                
+                if (data.subscribers && data.subscribers.length > 0) {
+                    const html = data.subscribers.map(sub => `
+                        <div class="moment-item">
+                            <div class="moment-header">
+                                <div class="moment-info">
+                                    <div class="moment-title">${sub.phone_number.replace(/\d(?=\d{4})/g, '*')}</div>
+                                    <div class="moment-meta">
+                                        Joined: ${new Date(sub.opted_in_at).toLocaleDateString()}
+                                        • Last active: ${new Date(sub.last_activity).toLocaleDateString()}
+                                    </div>
+                                </div>
+                                <div class="moment-actions">
+                                    <span class="status-badge ${sub.opted_in ? 'status-broadcasted' : 'status-cancelled'}">
+                                        ${sub.opted_in ? 'Active' : 'Opted Out'}
+                                    </span>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.875rem; color: #6b7280;">
+                                Regions: ${sub.regions?.join(', ') || 'All'} • 
+                                Categories: ${sub.categories?.join(', ') || 'All'}
+                            </div>
+                        </div>
+                    `).join('');
+                    document.getElementById('subscribers-list').innerHTML = html;
+                } else {
+                    document.getElementById('subscribers-list').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📱</div>
+                            <div>No subscribers found</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('subscribers-list').innerHTML = '<div class="error">Failed to load subscribers</div>';
+            }
+        }
+
+        // Load system settings
+        async function loadSettings() {
+            try {
+                const response = await fetch(`${API_BASE}/admin/settings`);
+                const data = await response.json();
+                
+                if (data.settings && data.settings.length > 0) {
+                    const html = data.settings.map(setting => `
+                        <div class="moment-item">
+                            <div class="moment-header">
+                                <div class="moment-info">
+                                    <div class="moment-title">${setting.setting_key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+                                    <div class="moment-meta">${setting.description || 'No description'}</div>
+                                </div>
+                                <div class="moment-actions">
+                                    <button class="btn btn-sm" onclick="editSetting('${setting.setting_key}', '${setting.setting_value}', '${setting.setting_type}')">Edit</button>
+                                </div>
+                            </div>
+                            <div class="moment-content">
+                                ${setting.setting_type === 'url' && setting.setting_value.includes('.png') ? 
+                                    `<img src="${setting.setting_value}" alt="${setting.setting_key}" style="max-width: 100px; height: auto; border-radius: 4px;">` : 
+                                    setting.setting_value
+                                }
+                            </div>
+                        </div>
+                    `).join('');
+                    document.getElementById('settings-list').innerHTML = html;
+                } else {
+                    document.getElementById('settings-list').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">⚙️</div>
+                            <div>No settings found</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('settings-list').innerHTML = '<div class="error">Failed to load settings</div>';
+            }
+        }
+
+        // Edit setting
+        function editSetting(key, currentValue, type) {
+            const newValue = prompt(`Edit ${key.replace(/_/g, ' ')}:`, currentValue);
+            if (newValue !== null && newValue !== currentValue) {
+                updateSetting(key, newValue);
+            }
+        }
+
+        // Update setting
+        async function updateSetting(key, value) {
+            try {
+                const response = await fetch(`${API_BASE}/admin/settings/${key}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ value })
+                });
+                
+                if (response.ok) {
+                    showSuccess('Setting updated successfully!');
+                    loadSettings();
+                    // Update header if logo changed
+                    if (key === 'app_logo') {
+                        updateHeaderLogo(value);
+                    }
+                } else {
+                    const error = await response.json();
+                    showError(error.error || 'Failed to update setting');
+                }
+            } catch (error) {
+                showError('Failed to update setting');
+            }
+        }
+
+        // Update header logo
+        function updateHeaderLogo(logoUrl) {
+            const header = document.querySelector('.header h1');
+            if (logoUrl && logoUrl.includes('.png')) {
+                header.innerHTML = `<img src="${logoUrl}" alt="Logo" style="height: 2rem; vertical-align: middle; margin-right: 0.5rem;">Unami Foundation Moments`;
+            }
+        }
+
+        // Form handling
+        document.getElementById('create-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            const isEdit = !!data.id;
+            
+            // Set sponsored flag if sponsor selected
+            data.is_sponsored = !!data.sponsor_id;
+            
+            // Remove empty fields
+            Object.keys(data).forEach(key => {
+                if (data[key] === '') delete data[key];
+            });
+            
+            try {
+                const url = isEdit ? `${API_BASE}/admin/moments/${data.id}` : `${API_BASE}/admin/moments`;
+                const method = isEdit ? 'PUT' : 'POST';
+                
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    showSuccess(`Moment ${isEdit ? 'updated' : 'created'} successfully!`);
+                    resetForm();
+                    loadMoments();
+                } else {
+                    const error = await response.json();
+                    showError(error.error || `Failed to ${isEdit ? 'update' : 'create'} moment`);
+                }
+            } catch (error) {
+                showError(`Failed to ${isEdit ? 'update' : 'create'} moment`);
+            }
+        });
+
+        // Sponsor form handling
+        document.getElementById('sponsor-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            const isEdit = !!data.id;
+            
+            try {
+                const url = isEdit ? `${API_BASE}/admin/sponsors/${data.id}` : `${API_BASE}/admin/sponsors`;
+                const method = isEdit ? 'PUT' : 'POST';
+                
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    showSuccess(`Sponsor ${isEdit ? 'updated' : 'created'} successfully!`);
+                    closeSponsorModal();
+                    loadSponsors();
+                } else {
+                    const error = await response.json();
+                    document.getElementById('sponsor-message').innerHTML = `<div class="error">${error.error}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('sponsor-message').innerHTML = '<div class="error">Failed to save sponsor</div>';
+            }
+        });
+
+        // Utility functions
+        function resetForm() {
+            document.getElementById('create-form').reset();
+            document.getElementById('edit-id').value = '';
+            document.getElementById('create-title').textContent = 'Create New Moment';
+            document.getElementById('submit-btn').textContent = 'Create Moment';
+            document.getElementById('create-message').innerHTML = '';
+            updateCharCount();
+        }
+
+        function updateCharCount() {
+            const content = document.querySelector('[name="content"]').value;
+            document.getElementById('char-count').textContent = content.length;
+        }
+
+        // Character counter
+        document.querySelector('[name="content"]').addEventListener('input', updateCharCount);
+
+        // Broadcast moment
+        async function broadcastMoment(momentId) {
+            showConfirm('Broadcast this moment now?', async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/admin/moments/${momentId}/broadcast`, {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        showSuccess('Moment broadcasted successfully!');
+                        loadMoments(currentPage);
+                        loadAnalytics();
+                    } else {
+                        const error = await response.json();
+                        showError(error.error || 'Failed to broadcast moment');
+                    }
+                } catch (error) {
+                    showError('Failed to broadcast moment');
+                }
+            });
+        }
+
+        // Modal functions
+        function showConfirm(message, callback) {
+            document.getElementById('confirm-message').textContent = message;
+            confirmCallback = callback;
+            document.getElementById('confirm-modal').classList.add('active');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirm-modal').classList.remove('active');
+            confirmCallback = null;
+        }
+
+        function confirmAction() {
+            if (confirmCallback) {
+                confirmCallback();
+                closeConfirmModal();
+            }
+        }
+
+        // Notification functions
+        function showSuccess(message) {
+            showNotification(message, 'success');
+        }
+
+        function showError(message) {
+            showNotification(message, 'error');
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `${type} notification`;
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 1001;
+                padding: 1rem;
+                border-radius: 0.5rem;
+                font-weight: 500;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                animation: slideIn 0.3s ease;
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+            .notification {
+                max-width: 300px;
+                word-wrap: break-word;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAnalytics();
+            loadRecentActivity();
+            loadSponsors();
+            loadSettings();
+            
+            // Load and apply logo from settings
+            fetch(`${API_BASE}/admin/settings`)
+                .then(response => response.json())
+                .then(data => {
+                    const logoSetting = data.settings?.find(s => s.setting_key === 'app_logo');
+                    if (logoSetting && logoSetting.setting_value) {
+                        updateHeaderLogo(logoSetting.setting_value);
+                    }
+                })
+                .catch(console.error);
+        });
+
+        // Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(registration => {
+                    console.log('PWA: Service Worker registered', registration.scope);
+                })
+                .catch(error => {
+                    console.log('PWA: Service Worker registration failed', error);
+                });
+        }
+
+        // PWA install prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            console.log('PWA: Install prompt available');
+            
+            // Show install button if desired
+            const installBtn = document.createElement('button');
+            installBtn.textContent = '📱 Install App';
+            installBtn.className = 'btn btn-sm';
+            installBtn.style.cssText = 'position: fixed; top: 10px; right: 10px; z-index: 1000;';
+            installBtn.onclick = async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const result = await deferredPrompt.userChoice;
+                    console.log('PWA: Install result', result);
+                    deferredPrompt = null;
+                    installBtn.remove();
+                }
+            };
+            document.body.appendChild(installBtn);
+        });
+    </script>
+</body>
+</html>

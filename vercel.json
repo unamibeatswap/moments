@@ -1,23 +1,44 @@
 {
   "version": 2,
+  "name": "unami-moments-admin",
   "builds": [
     {
       "src": "src/server.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
+      "src": "/admin/(.*)",
+      "dest": "/src/server.js"
+    },
+    {
+      "src": "/webhook",
+      "dest": "/src/server.js"
+    },
+    {
+      "src": "/health",
+      "dest": "/src/server.js"
+    },
+    {
+      "src": "/test-(.*)",
+      "dest": "/src/server.js"
+    },
+    {
       "src": "/(.*)",
-      "dest": "src/server.js"
+      "dest": "/public/$1"
     }
   ],
   "env": {
-    "WHATSAPP_TOKEN": "@whatsapp_token",
-    "WHATSAPP_PHONE_ID": "@whatsapp_phone_id", 
-    "WEBHOOK_VERIFY_TOKEN": "@webhook_verify_token",
-    "SUPABASE_URL": "@supabase_url",
-    "SUPABASE_SERVICE_KEY": "@supabase_service_key",
-    "SUPABASE_ANON_KEY": "@supabase_anon_key"
+    "NODE_ENV": "production"
+  },
+  "functions": {
+    "src/server.js": {
+      "maxDuration": 30
+    }
   }
 }

@@ -1,11 +1,18 @@
 import express from 'express';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { handleWebhook, verifyWebhook } from './webhook.js';
 import { supabase } from '../config/supabase.js';
 import { callMCPAdvisory } from './advisory.js';
 import { healthCheck } from './health.js';
+import { scheduleNextBroadcasts } from './broadcast.js';
+import adminRoutes from './admin.js';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,6 +20,9 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Serve PWA static files
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Health check
 app.get('/health', async (req, res) => {
@@ -48,9 +58,21 @@ app.get('/test-mcp', async (req, res) => {
   }
 });
 
+// Admin API routes
+app.use('/admin', adminRoutes);
+
 // WhatsApp webhook endpoints
 app.get('/webhook', verifyWebhook);
 app.post('/webhook', handleWebhook);
+
+// PWA routes
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+app.get('/moments', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
 
 // Error handling
 app.use((error, req, res, next) => {
@@ -64,6 +86,11 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`WhatsApp Community Gateway running on port ${PORT}`);
+  console.log(`Unami Foundation Moments API running on port ${PORT}`);
   console.log(`Webhook URL: http://localhost:${PORT}/webhook`);
+  console.log(`Admin Dashboard: http://localhost:${PORT}`);
+  
+  // Start broadcast scheduler (check every 5 minutes)
+  setInterval(scheduleNextBroadcasts, 5 * 60 * 1000);
+  console.log('Broadcast scheduler started');
 });
