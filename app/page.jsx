@@ -9,13 +9,22 @@ export default function HomePage() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const res = await fetch('/api/analytics');
+        // Use public stats endpoint instead of admin analytics
+        const res = await fetch('/api/public-stats');
         if (res.ok) {
           const data = await res.json();
-          setStats(data);
+          setStats({
+            moments: data.totalMoments || 0,
+            subscribers: data.activeSubscribers || 0,
+            broadcasts: data.totalBroadcasts || 0
+          });
+        } else {
+          // Fallback to static data if API unavailable
+          setStats({ moments: 0, subscribers: 0, broadcasts: 0 });
         }
       } catch (e) {
-        console.log('Analytics not available');
+        console.log('Stats not available, using defaults');
+        setStats({ moments: 0, subscribers: 0, broadcasts: 0 });
       } finally {
         setLoading(false);
       }

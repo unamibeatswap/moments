@@ -9,6 +9,7 @@ import { callMCPAdvisory } from './advisory.js';
 import { healthCheck } from './health.js';
 import { scheduleNextBroadcasts } from './broadcast.js';
 import adminRoutes from './admin.js';
+import publicRoutes from './public.js';
 import cookieParser from 'cookie-parser';
 import { csrfMiddleware, csrfCookieSetter } from './csrf.js';
 import cors from 'cors';
@@ -100,6 +101,9 @@ app.get('/admin.html', csrfCookieSetter, (req, res) => {
 
 // Mount admin routes with CSRF enforcement for state-changing requests
 app.use('/admin', csrfMiddleware, adminRoutes);
+
+// Mount public routes (no auth required)
+app.use('/public', publicRoutes);
 
 // Health check
 app.get('/health', async (req, res) => {
