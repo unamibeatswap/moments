@@ -1,3 +1,4 @@
+import { test } from 'node:test';
 import fs from 'fs';
 import path from 'path';
 import assert from 'assert';

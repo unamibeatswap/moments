@@ -41,6 +41,8 @@ export default function RootLayout({ children }) {
               <nav className="nav-desktop" style={{display: 'flex', gap: '16px'}}>
                 <a href="/" style={{color: 'white', textDecoration: 'none', padding: '4px 8px', borderRadius: '4px', transition: 'background 0.2s'}}>Home</a>
                 <a href="/moments" style={{color: 'white', textDecoration: 'none', padding: '4px 8px', borderRadius: '4px', transition: 'background 0.2s'}}>Moments</a>
+                <a href="/campaigns" style={{color: 'white', textDecoration: 'none', padding: '4px 8px', borderRadius: '4px', transition: 'background 0.2s'}}>Campaigns</a>
+                <a href="/sponsors" style={{color: 'white', textDecoration: 'none', padding: '4px 8px', borderRadius: '4px', transition: 'background 0.2s'}}>Sponsors</a>
                 <a href="/broadcasts" style={{color: 'white', textDecoration: 'none', padding: '4px 8px', borderRadius: '4px', transition: 'background 0.2s'}}>Broadcasts</a>
                 <a href="/settings" style={{color: 'white', textDecoration: 'none', padding: '4px 8px', borderRadius: '4px', transition: 'background 0.2s'}}>Settings</a>
               </nav>
@@ -48,6 +50,8 @@ export default function RootLayout({ children }) {
             <nav className="nav-mobile" style={{display: 'none', justifyContent: 'space-around', marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '8px'}}>
               <a href="/" style={{color: 'white', textDecoration: 'none', fontSize: '12px', textAlign: 'center', flex: 1}}>🏠<br/>Home</a>
               <a href="/moments" style={{color: 'white', textDecoration: 'none', fontSize: '12px', textAlign: 'center', flex: 1}}>📢<br/>Moments</a>
+              <a href="/campaigns" style={{color: 'white', textDecoration: 'none', fontSize: '12px', textAlign: 'center', flex: 1}}>🎯<br/>Campaigns</a>
+              <a href="/sponsors" style={{color: 'white', textDecoration: 'none', fontSize: '12px', textAlign: 'center', flex: 1}}>🏢<br/>Sponsors</a>
               <a href="/broadcasts" style={{color: 'white', textDecoration: 'none', fontSize: '12px', textAlign: 'center', flex: 1}}>📡<br/>Broadcasts</a>
               <a href="/settings" style={{color: 'white', textDecoration: 'none', fontSize: '12px', textAlign: 'center', flex: 1}}>⚙️<br/>Settings</a>
             </nav>
