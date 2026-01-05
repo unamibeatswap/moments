@@ -1,1 +1,55 @@
-import jwt from 'jsonwebtoken';\nimport bcrypt from 'bcrypt';\nimport { supabase } from '../config/supabase.js';\n\nconst JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';\n\nexport async function adminLogin(req, res) {\n  try {\n    const { email, password } = req.body;\n    \n    if (!email || !password) {\n      return res.status(400).json({ error: 'Email and password required' });\n    }\n\n    // Check if user exists in admin_roles table\n    const { data: adminUser, error } = await supabase\n      .from('admin_roles')\n      .select('*')\n      .eq('user_id', email)\n      .single();\n\n    if (error || !adminUser) {\n      return res.status(401).json({ error: 'Invalid credentials' });\n    }\n\n    // For development, accept any password for admin users\n    // In production, implement proper password hashing\n    const validPassword = process.env.NODE_ENV === 'development' || \n                         password === process.env.ADMIN_PASSWORD;\n\n    if (!validPassword) {\n      return res.status(401).json({ error: 'Invalid credentials' });\n    }\n\n    // Generate JWT token\n    const token = jwt.sign(\n      { \n        user_id: adminUser.user_id,\n        role: adminUser.role,\n        exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 hours\n      },\n      JWT_SECRET\n    );\n\n    res.json({ \n      token,\n      user: {\n        id: adminUser.user_id,\n        role: adminUser.role\n      }\n    });\n  } catch (error) {\n    console.error('Admin login error:', error);\n    res.status(500).json({ error: 'Login failed' });\n  }\n}
+import jwt from 'jsonwebtoken';
+import { supabase } from '../config/supabase.js';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
+
+export async function adminLogin(req, res) {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' });
+    }
+
+    // Check if user exists in admin_roles table
+    const { data: adminUser, error } = await supabase
+      .from('admin_roles')
+      .select('*')
+      .eq('user_id', email)
+      .single();
+
+    if (error || !adminUser) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // For development, accept any password for admin users
+    // In production, implement proper password hashing
+    const validPassword = process.env.NODE_ENV === 'development' || 
+                         password === process.env.ADMIN_PASSWORD;
+
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        user_id: adminUser.user_id,
+        role: adminUser.role,
+        exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 hours
+      },
+      JWT_SECRET
+    );
+
+    res.json({ 
+      token,
+      user: {
+        id: adminUser.user_id,
+        role: adminUser.role
+      }
+    });
+  } catch (error) {
+    console.error('Admin login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+}
