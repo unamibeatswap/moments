@@ -31,7 +31,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Health check - MUST be first, before any middleware
+// Health check - MUST be before any middleware that could block it
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
