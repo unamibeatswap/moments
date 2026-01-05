@@ -16,27 +16,29 @@
     "build:legacy": "echo 'Build complete - Vercel serverless functions ready'",
     "vercel-build": "echo 'Vercel build complete'",
     "deploy:vercel": "vercel --prod",
-    "deploy:railway": "railway up"
-    ,"setup:storage": "node scripts/create_storage_bucket.js",
-    "apply:rbac": "bash scripts/apply_rbac.sh"
-    ,"seed:superadmin": "bash scripts/seed_superadmin.sh"
+    "deploy:railway": "railway up",
+    "setup:storage": "node scripts/create_storage_bucket.js",
+    "apply:rbac": "bash scripts/apply_rbac.sh",
+    "seed:superadmin": "bash scripts/seed_superadmin.sh"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.38.0",
-    "cors": "^2.8.5",
-    "cookie-parser": "^1.4.6",
     "@sentry/node": "^7.26.0",
+    "@supabase/supabase-js": "^2.38.0",
     "axios": "^1.6.0",
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "form-data": "^4.0.0",
     "franc": "^6.1.0",
+    "jsonwebtoken": "^9.0.3",
     "multer": "^1.4.5-lts.1",
     "pg": "^8.11.3",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "supertest": "^6.3.4",
-    "next": "^14.0.0"
+    "next": "^14.0.0",
+    "supertest": "^6.3.4"
   }
 }

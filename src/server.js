@@ -10,6 +10,7 @@ import { healthCheck } from './health.js';
 import { scheduleNextBroadcasts } from './broadcast.js';
 import adminRoutes from './admin.js';
 import publicRoutes from './public.js';
+import { adminLogin } from './admin-auth.js';
 import cookieParser from 'cookie-parser';
 import { csrfMiddleware, csrfCookieSetter } from './csrf.js';
 import cors from 'cors';
@@ -99,22 +100,18 @@ app.use(cookieParser());
 
 // serve admin.html with csrf cookie set when ADMIN_CSRF_TOKEN is configured
 app.get('/admin.html', csrfCookieSetter, (req, res) => {
-  // Redirect to separate admin domain or show message
-  res.send(`
-    <html>
-      <head><title>Admin Access</title></head>
-      <body style="font-family: sans-serif; text-align: center; padding: 50px;">
-        <h1>🔒 Admin Dashboard</h1>
-        <p>Admin access has been moved to a separate secure domain.</p>
-        <p>Contact your administrator for access.</p>
-        <a href="/" style="color: #2563eb;">← Back to Community App</a>
-      </body>
-    </html>
-  `);
+  res.sendFile(path.join(__dirname, '../public/admin-dashboard.html'));
+});
+
+app.get('/admin-dashboard.html', csrfCookieSetter, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/admin-dashboard.html'));
 });
 
 // Mount admin routes with CSRF enforcement for state-changing requests
 app.use('/admin', csrfMiddleware, adminRoutes);
+
+// Admin login endpoint (no CSRF for login)
+app.post('/admin/login', adminLogin);
 
 // Mount public routes (no auth required)
 app.use('/public', publicRoutes);
