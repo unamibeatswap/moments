@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
+    "start:minimal": "node src/minimal-server.js",
     "dev": "node --watch src/server.js",
     "dev:next": "next dev",
     "test": "node --test tests/**/*.test.js",

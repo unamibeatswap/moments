@@ -31,6 +31,16 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Health check - MUST be first, before any middleware
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    service: 'Unami Foundation Moments API',
+    version: '1.0.0'
+  });
+});
+
 // Capture raw body for webhook HMAC verification
 app.use(express.json({
   limit: '50mb',
@@ -56,11 +66,16 @@ if (process.env.SENTRY_DSN) {
   app.use(Sentry.Handlers.requestHandler());
 }
 
-// Simple in-memory rate limiter (per IP)
+// Simple in-memory rate limiter (per IP) - EXCLUDE health check
 const rateWindowMs = 15 * 60 * 1000; // 15 minutes
 const maxRequests = 300; // per window per IP
 const ipMap = new Map();
 app.use((req, res, next) => {
+  // Skip rate limiting for health check
+  if (req.path === '/health') {
+    return next();
+  }
+  
   try {
     const now = Date.now();
     const ip = req.ip || req.connection.remoteAddress || 'unknown';
@@ -116,13 +131,13 @@ app.post('/admin/login', adminLogin);
 // Mount public routes (no auth required)
 app.use('/public', publicRoutes);
 
-// Health check - simplified for Railway deployment
-app.get('/health', async (req, res) => {
+// Detailed health check with external services
+app.get('/health-detailed', async (req, res) => {
   try {
     const health = await healthCheck();
     res.status(200).json(health);
   } catch (error) {
-    console.error('Health check error:', error);
+    console.error('Detailed health check error:', error);
     res.status(200).json({
       status: 'degraded',
       timestamp: new Date().toISOString(),
@@ -130,6 +145,16 @@ app.get('/health', async (req, res) => {
       error: error.message
     });
   }
+});
+
+// Health check - MUST be before any middleware that could block it
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    service: 'Unami Foundation Moments API',
+    version: '1.0.0'
+  });
 });
 
 // Test endpoints
