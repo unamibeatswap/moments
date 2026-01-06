@@ -452,17 +452,27 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
     <script>
-        // Supply Supabase details for the admin UI
-        window.SUPABASE_URL = 'https://arqeiadudzwbmzdhqkit.supabase.co';
-        window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFycWVpYWR1ZHp3Ym16ZGhxa2l0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyMTg1OTgsImV4cCI6MjA4MTc5NDU5OH0.ZuFeM6U3_-romnhLN2X3ozqWHovifqMQjxRAc3N8r2E';
+        // Direct Supabase auth check without library
+        async function getSession() {
+            const token = localStorage.getItem('supabase.auth.token');
+            if (!token) return null;
+            try {
+                const parsed = JSON.parse(token);
+                return parsed.access_token ? { user: { email: parsed.user?.email || 'admin' } } : null;
+            } catch {
+                return null;
+            }
+        }
         
-        // Check authentication on page load - simplified
+        async function signOut() {
+            localStorage.removeItem('supabase.auth.token');
+        }
+        
+        // Check authentication on page load
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                const supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-                const { data: { session } } = await supabaseClient.auth.getSession();
+                const session = await getSession();
                 
                 if (!session) {
                     window.location.href = '/login';
@@ -476,7 +486,7 @@
                 if (userEmailEl) userEmailEl.textContent = session.user.email;
                 if (signOutEl) {
                     signOutEl.addEventListener('click', async () => {
-                        await supabaseClient.auth.signOut();
+                        await signOut();
                         window.location.href = '/login';
                     });
                 }
