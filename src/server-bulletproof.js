@@ -26,9 +26,9 @@ app.get('/health', (req, res) => {
 app.use((req, res, next) => {
   res.setHeader('Content-Security-Policy', 
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline'; " +
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
     "style-src 'self' 'unsafe-inline'; " +
-    "connect-src 'self' https://arqeiadudzwbmzdhqkit.supabase.co; " +
+    "connect-src 'self' https://arqeiadudzwbmzdhqkit.supabase.co https://cdn.jsdelivr.net; " +
     "img-src 'self' data: https:; " +
     "font-src 'self' data:;"
   );
@@ -57,6 +57,15 @@ app.get('/admin-dashboard.html', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/admin-dashboard.html'));
   } catch (error) {
     res.status(404).json({ error: 'Admin dashboard not found' });
+  }
+});
+
+// Login page
+app.get('/login', (req, res) => {
+  try {
+    res.sendFile(path.join(__dirname, '../public/login.html'));
+  } catch (error) {
+    res.status(404).json({ error: 'Login page not found' });
   }
 });
 
