@@ -62,10 +62,10 @@ export async function broadcastMomentCompliant(momentId) {
     if (broadcastError) throw broadcastError;
 
     // Choose appropriate template and build parameters
-    const templateName = moment.is_sponsored ? 'sponsored_simple' : 'moment_simple';
+    const templateName = moment.is_sponsored ? 'partner_update' : 'community_update';
     const parameters = moment.is_sponsored ? 
-      [moment.region, moment.title, moment.content, moment.category, moment.region, moment.sponsors?.display_name || 'Partner'] :
-      [moment.region, moment.title, moment.content, moment.category, moment.region];
+      [moment.title + '\n\n' + moment.content, moment.region, moment.category, moment.sponsors?.display_name || 'Partner'] :
+      [moment.title + '\n\n' + moment.content, moment.region, moment.category];
 
     // Send compliant broadcast using approved templates
     const results = await sendCompliantBroadcast(
