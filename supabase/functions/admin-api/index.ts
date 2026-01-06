@@ -107,7 +107,81 @@ serve(async (req) => {
       })
     }
 
-    // Campaigns endpoint
+    // Create campaign
+    if (path.includes('/campaigns') && method === 'POST') {
+      const body = await req.json()
+      const { data, error } = await supabase
+        .from('campaigns')
+        .insert({
+          title: body.title,
+          content: body.content,
+          sponsor_id: body.sponsor_id || null,
+          budget: body.budget || 0,
+          target_regions: body.target_regions || [],
+          target_categories: body.target_categories || [],
+          media_urls: body.media_urls || [],
+          scheduled_at: body.scheduled_at || null,
+          status: 'pending_review'
+        })
+        .select()
+        .single()
+      
+      if (error) throw error
+      return new Response(JSON.stringify({ campaign: data }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Update settings
+    if (path.includes('/settings/') && method === 'PUT') {
+      const settingKey = path.split('/settings/')[1]
+      const body = await req.json()
+      const { data, error } = await supabase
+        .from('system_settings')
+        .update({ 
+          setting_value: body.value,
+          updated_at: new Date().toISOString()
+        })
+        .eq('setting_key', settingKey)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return new Response(JSON.stringify({ setting: data }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Delete moment
+    if (path.includes('/moments/') && method === 'DELETE') {
+      const momentId = path.split('/moments/')[1]
+      const { error } = await supabase
+        .from('moments')
+        .delete()
+        .eq('id', momentId)
+      
+      if (error) throw error
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Update moment
+    if (path.includes('/moments/') && method === 'PUT') {
+      const momentId = path.split('/moments/')[1]
+      const body = await req.json()
+      const { data, error } = await supabase
+        .from('moments')
+        .update(body)
+        .eq('id', momentId)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return new Response(JSON.stringify({ moment: data }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
     if (path.includes('/campaigns') && method === 'GET') {
       const { data: campaigns } = await supabase
         .from('campaigns')
