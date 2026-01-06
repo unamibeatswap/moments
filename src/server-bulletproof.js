@@ -27,6 +27,7 @@ app.use((req, res, next) => {
   res.setHeader('Content-Security-Policy', 
     "default-src 'self'; " +
     "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
+    "script-src-elem 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
     "connect-src 'self' https://arqeiadudzwbmzdhqkit.supabase.co; " +
     "img-src 'self' data: https:; " +
     "style-src 'self' 'unsafe-inline';"
