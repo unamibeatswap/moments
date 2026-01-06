@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self' https://arqeiadudzwbmzdhqkit.supabase.co https://cdn.jsdelivr.net; img-src 'self' data: https:; style-src 'self' 'unsafe-inline';">
     <title>Unami Foundation Moments - Admin</title>
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#2563eb">
@@ -452,6 +453,7 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
     <script>
         // Supply Supabase details for the admin UI
         window.SUPABASE_URL = 'https://arqeiadudzwbmzdhqkit.supabase.co';
@@ -464,24 +466,28 @@
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 
                 if (!session) {
-                    window.location.href = '/login.html';
+                    window.location.href = '/login';
                     return;
                 }
                 
                 // Show user email and setup logout
-                document.getElementById('user-email').textContent = session.user.email;
-                document.getElementById('sign-out').addEventListener('click', async () => {
-                    await supabaseClient.auth.signOut();
-                    window.location.href = '/login.html';
-                });
+                const userEmailEl = document.getElementById('user-email');
+                const signOutEl = document.getElementById('sign-out');
+                
+                if (userEmailEl) userEmailEl.textContent = session.user.email;
+                if (signOutEl) {
+                    signOutEl.addEventListener('click', async () => {
+                        await supabaseClient.auth.signOut();
+                        window.location.href = '/login';
+                    });
+                }
                 
             } catch (error) {
                 console.error('Auth error:', error);
-                window.location.href = '/login.html';
+                window.location.href = '/login';
             }
         });
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
     <script src="/js/admin.js"></script>
 </body>
 </html>
