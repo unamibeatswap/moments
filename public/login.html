@@ -174,8 +174,32 @@
             }
         }
         
+        function sanitizeInput(input) {
+            if (typeof input !== 'string') return '';
+            return input.trim().replace(/[<>"'&]/g, function(match) {
+                const escapeMap = {
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#x27;',
+                    '&': '&amp;'
+                };
+                return escapeMap[match];
+            });
+        }
+        
+        function validateEmail(email) {
+            const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            return emailRegex.test(email) && email.length <= 254;
+        }
+        
+        function validatePassword(password) {
+            return password.length >= 8 && password.length <= 128;
+        }
+        
         function showError(message) {
-            document.getElementById('error-message').innerHTML = `<div class="error">${message}</div>`;
+            const sanitized = sanitizeInput(message);
+            document.getElementById('error-message').innerHTML = `<div class="error">${sanitized}</div>`;
         }
         
         function clearError() {
@@ -209,8 +233,29 @@
                 setLoading(true);
                 
                 const formData = new FormData(e.target);
-                const email = formData.get('email');
-                const password = formData.get('password');
+                const rawEmail = formData.get('email');
+                const rawPassword = formData.get('password');
+                
+                // Input validation and sanitization
+                const email = sanitizeInput(rawEmail);
+                const password = sanitizeInput(rawPassword);
+                
+                // Validate inputs
+                if (!validateEmail(email)) {
+                    throw new Error('Please enter a valid email address');
+                }
+                
+                if (!validatePassword(password)) {
+                    throw new Error('Password must be between 8-128 characters');
+                }
+                
+                // Rate limiting check (simple client-side)
+                const lastAttempt = localStorage.getItem('lastLoginAttempt');
+                const now = Date.now();
+                if (lastAttempt && (now - parseInt(lastAttempt)) < 3000) {
+                    throw new Error('Please wait before trying again');
+                }
+                localStorage.setItem('lastLoginAttempt', now.toString());
                 
                 try {
                     // Try to initialize if not already done
@@ -221,7 +266,7 @@
                         }
                     }
                     
-                    console.log('Attempting login for:', email);
+                    console.log('Attempting login for:', email.replace(/(.{2}).*(@.*)/, '$1***$2'));
                     
                     // Sign in with Supabase
                     const { data, error } = await supabaseClient.auth.signInWithPassword({
@@ -245,8 +290,23 @@
                     }
                     
                 } catch (error) {
-                    console.error('Login error:', error);
-                    showError(error.message || 'Login failed. Please try again.');
+                    console.error('Login error type:', error.constructor.name);
+                    
+                    // Generic error message to prevent information disclosure
+                    let userMessage = 'Login failed. Please check your credentials.';
+                    
+                    // Only show specific errors for certain cases
+                    if (error.message.includes('Invalid login credentials')) {
+                        userMessage = 'Invalid email or password';
+                    } else if (error.message.includes('Email not confirmed')) {
+                        userMessage = 'Please check your email and confirm your account';
+                    } else if (error.message.includes('Too many requests')) {
+                        userMessage = 'Too many login attempts. Please try again later';
+                    } else if (error.message.includes('service unavailable') || error.message.includes('wait before trying')) {
+                        userMessage = error.message;
+                    }
+                    
+                    showError(userMessage);
                     setLoading(false);
                 }
             });
