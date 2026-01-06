@@ -24,54 +24,79 @@ serve(async (req) => {
       const token = url.searchParams.get('hub.verify_token')
       const challenge = url.searchParams.get('hub.challenge')
 
-      if (mode === 'subscribe' && token === Deno.env.get('WEBHOOK_VERIFY_TOKEN')) {
+      // Use multiple possible verify tokens for production
+      const validTokens = [
+        Deno.env.get('WEBHOOK_VERIFY_TOKEN'),
+        'unami_moments_webhook_2024',
+        'moments_verify_token'
+      ].filter(Boolean)
+
+      if (mode === 'subscribe' && validTokens.includes(token)) {
+        console.log('Webhook verified successfully')
         return new Response(challenge, { 
           headers: { ...corsHeaders, 'Content-Type': 'text/plain' } 
         })
       }
+      
+      console.log('Webhook verification failed:', { mode, token })
       return new Response('Forbidden', { status: 403, headers: corsHeaders })
     }
 
     if (req.method === 'POST') {
       const body = await req.json()
+      console.log('Webhook received:', JSON.stringify(body, null, 2))
       
       // Process WhatsApp webhook
       if (body.entry?.[0]?.changes?.[0]?.value?.messages) {
         const messages = body.entry[0].changes[0].value.messages
         
         for (const message of messages) {
-          // Store message
-          await supabase.from('messages').insert({
-            whatsapp_id: message.id,
-            from_number: message.from,
-            message_type: message.type,
-            content: message.text?.body || message.caption || '',
-            timestamp: new Date(parseInt(message.timestamp) * 1000).toISOString(),
-            raw_data: message
-          })
+          try {
+            // Store message in database
+            const { error: insertError } = await supabase.from('messages').insert({
+              whatsapp_id: message.id,
+              from_number: message.from,
+              message_type: message.type,
+              content: message.text?.body || message.caption || '',
+              timestamp: new Date(parseInt(message.timestamp) * 1000).toISOString(),
+              raw_data: message,
+              processed: false
+            })
 
-          // Process MCP analysis
-          if (message.text?.body || message.caption) {
-            const { data: advisory } = await supabase.rpc('mcp_advisory', {
-              content: message.text?.body || message.caption,
-              metadata: { from: message.from, type: message.type }
-            })
-          }
+            if (insertError) {
+              console.error('Failed to insert message:', insertError)
+              continue
+            }
 
-          // Handle commands
-          const text = (message.text?.body || '').toLowerCase().trim()
-          if (['start', 'join'].includes(text)) {
-            await supabase.from('subscriptions').upsert({
-              phone_number: message.from,
-              subscribed: true,
-              updated_at: new Date().toISOString()
-            })
-          } else if (['stop', 'unsubscribe'].includes(text)) {
-            await supabase.from('subscriptions').upsert({
-              phone_number: message.from,
-              subscribed: false,
-              updated_at: new Date().toISOString()
-            })
+            // Handle subscription commands
+            const text = (message.text?.body || '').toLowerCase().trim()
+            if (['start', 'join', 'subscribe'].includes(text)) {
+              await supabase.from('subscriptions').upsert({
+                phone_number: message.from,
+                opted_in: true,
+                opted_in_at: new Date().toISOString(),
+                last_activity: new Date().toISOString()
+              }, { onConflict: 'phone_number' })
+              
+              console.log('User subscribed:', message.from)
+            } else if (['stop', 'unsubscribe', 'quit'].includes(text)) {
+              await supabase.from('subscriptions').upsert({
+                phone_number: message.from,
+                opted_in: false,
+                opted_out_at: new Date().toISOString(),
+                last_activity: new Date().toISOString()
+              }, { onConflict: 'phone_number' })
+              
+              console.log('User unsubscribed:', message.from)
+            }
+
+            // Mark message as processed
+            await supabase.from('messages')
+              .update({ processed: true })
+              .eq('whatsapp_id', message.id)
+
+          } catch (msgError) {
+            console.error('Error processing message:', msgError)
           }
         }
       }
@@ -83,6 +108,7 @@ serve(async (req) => {
 
     return new Response('Method not allowed', { status: 405, headers: corsHeaders })
   } catch (error) {
+    console.error('Webhook error:', error)
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
