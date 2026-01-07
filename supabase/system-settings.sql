@@ -1,5 +1,5 @@
 -- System Settings Table for Admin Control
-CREATE TABLE system_settings (
+CREATE TABLE IF NOT EXISTS system_settings (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   setting_key TEXT UNIQUE NOT NULL,
   setting_value TEXT,
@@ -11,7 +11,7 @@ CREATE TABLE system_settings (
 );
 
 -- Indexes
-CREATE INDEX idx_system_settings_key ON system_settings(setting_key);
+CREATE INDEX IF NOT EXISTS idx_system_settings_key ON system_settings(setting_key);
 
 -- RLS
 ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
@@ -28,7 +28,8 @@ INSERT INTO system_settings (setting_key, setting_value, setting_type, descripti
 ('auto_broadcast_enabled', 'true', 'boolean', 'Enable automatic scheduled broadcasting'),
 ('maintenance_mode', 'false', 'boolean', 'Enable maintenance mode'),
 ('analytics_enabled', 'true', 'boolean', 'Enable analytics tracking'),
-('default_region', 'KZN', 'text', 'Default region for new moments');
+('default_region', 'KZN', 'text', 'Default region for new moments')
+ON CONFLICT (setting_key) DO NOTHING;
 
 -- Function to get setting value
 CREATE OR REPLACE FUNCTION get_setting(key TEXT)

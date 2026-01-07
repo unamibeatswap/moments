@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_net";
 
 -- Sponsors table (enhanced)
-CREATE TABLE sponsors (
+CREATE TABLE IF NOT EXISTS sponsors (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT UNIQUE NOT NULL,
   display_name TEXT NOT NULL,
@@ -18,7 +18,7 @@ CREATE TABLE sponsors (
 );
 
 -- Moments table (enhanced with constraints)
-CREATE TABLE moments (
+CREATE TABLE IF NOT EXISTS moments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL CHECK (length(title) >= 3 AND length(title) <= 200),
   content TEXT NOT NULL CHECK (length(content) >= 10 AND length(content) <= 2000),
@@ -38,7 +38,7 @@ CREATE TABLE moments (
 );
 
 -- Broadcasts table (enhanced)
-CREATE TABLE broadcasts (
+CREATE TABLE IF NOT EXISTS broadcasts (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   moment_id UUID REFERENCES moments(id) ON DELETE CASCADE,
   recipient_count INTEGER DEFAULT 0 CHECK (recipient_count >= 0),
@@ -52,7 +52,7 @@ CREATE TABLE broadcasts (
 );
 
 -- Subscriptions table (enhanced)
-CREATE TABLE subscriptions (
+CREATE TABLE IF NOT EXISTS subscriptions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   phone_number TEXT UNIQUE NOT NULL CHECK (phone_number ~ '^\+[1-9]\d{1,14}$'),
   opted_in BOOLEAN DEFAULT TRUE,
@@ -66,7 +66,7 @@ CREATE TABLE subscriptions (
 );
 
 -- Messages table (enhanced)
-CREATE TABLE messages (
+CREATE TABLE IF NOT EXISTS messages (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   whatsapp_id TEXT UNIQUE NOT NULL,
   from_number TEXT NOT NULL,
@@ -82,10 +82,9 @@ CREATE TABLE messages (
 );
 
 -- Media table (enhanced)
-CREATE TABLE media (
+CREATE TABLE IF NOT EXISTS media (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   message_id UUID REFERENCES messages(id) ON DELETE CASCADE,
-  moment_id UUID REFERENCES moments(id) ON DELETE CASCADE,
   whatsapp_media_id TEXT,
   media_type TEXT NOT NULL CHECK (media_type IN ('image','audio','video','document')),
   original_url TEXT,
@@ -97,71 +96,58 @@ CREATE TABLE media (
 );
 
 -- Advisories table (enhanced)
-CREATE TABLE advisories (
+CREATE TABLE IF NOT EXISTS advisories (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   message_id UUID REFERENCES messages(id) ON DELETE CASCADE,
-  moment_id UUID REFERENCES moments(id) ON DELETE CASCADE,
   advisory_type TEXT NOT NULL CHECK (advisory_type IN ('language','urgency','harm','spam','content_quality')),
   confidence DECIMAL(3,2) CHECK (confidence >= 0 AND confidence <= 1),
   details JSONB,
   escalation_suggested BOOLEAN DEFAULT FALSE,
-  reviewed BOOLEAN DEFAULT FALSE,
-  reviewed_by TEXT,
-  reviewed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Flags table (enhanced)
-CREATE TABLE flags (
+CREATE TABLE IF NOT EXISTS flags (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   message_id UUID REFERENCES messages(id) ON DELETE CASCADE,
-  moment_id UUID REFERENCES moments(id) ON DELETE CASCADE,
   flag_type TEXT NOT NULL,
   severity TEXT NOT NULL CHECK (severity IN ('low','medium','high','critical')),
   action_taken TEXT CHECK (action_taken IN ('logged','warned','escalated','blocked')),
   notes TEXT,
-  flagged_by TEXT,
-  resolved BOOLEAN DEFAULT FALSE,
-  resolved_by TEXT,
-  resolved_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Comprehensive Indexes
-CREATE INDEX idx_sponsors_active ON sponsors(active);
-CREATE INDEX idx_sponsors_name ON sponsors(name);
+CREATE INDEX IF NOT EXISTS idx_sponsors_active ON sponsors(active);
+CREATE INDEX IF NOT EXISTS idx_sponsors_name ON sponsors(name);
 
-CREATE INDEX idx_moments_status ON moments(status);
-CREATE INDEX idx_moments_scheduled ON moments(scheduled_at) WHERE status = 'scheduled';
-CREATE INDEX idx_moments_region ON moments(region);
-CREATE INDEX idx_moments_category ON moments(category);
-CREATE INDEX idx_moments_created_at ON moments(created_at DESC);
-CREATE INDEX idx_moments_sponsor ON moments(sponsor_id);
+CREATE INDEX IF NOT EXISTS idx_moments_status ON moments(status);
+CREATE INDEX IF NOT EXISTS idx_moments_scheduled ON moments(scheduled_at) WHERE status = 'scheduled';
+CREATE INDEX IF NOT EXISTS idx_moments_region ON moments(region);
+CREATE INDEX IF NOT EXISTS idx_moments_category ON moments(category);
+CREATE INDEX IF NOT EXISTS idx_moments_created_at ON moments(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_moments_sponsor ON moments(sponsor_id);
 
-CREATE INDEX idx_broadcasts_moment_id ON broadcasts(moment_id);
-CREATE INDEX idx_broadcasts_status ON broadcasts(status);
-CREATE INDEX idx_broadcasts_started_at ON broadcasts(broadcast_started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_broadcasts_moment_id ON broadcasts(moment_id);
+CREATE INDEX IF NOT EXISTS idx_broadcasts_status ON broadcasts(status);
+CREATE INDEX IF NOT EXISTS idx_broadcasts_started_at ON broadcasts(broadcast_started_at DESC);
 
-CREATE INDEX idx_subscriptions_phone ON subscriptions(phone_number);
-CREATE INDEX idx_subscriptions_opted_in ON subscriptions(opted_in);
-CREATE INDEX idx_subscriptions_regions ON subscriptions USING GIN(regions);
-CREATE INDEX idx_subscriptions_last_activity ON subscriptions(last_activity DESC);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_phone ON subscriptions(phone_number);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_opted_in ON subscriptions(opted_in);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_regions ON subscriptions USING GIN(regions);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_last_activity ON subscriptions(last_activity DESC);
 
-CREATE INDEX idx_messages_from_number ON messages(from_number);
-CREATE INDEX idx_messages_processed ON messages(processed);
-CREATE INDEX idx_messages_flagged ON messages(flagged);
-CREATE INDEX idx_messages_timestamp ON messages(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_from_number ON messages(from_number);
+CREATE INDEX IF NOT EXISTS idx_messages_processed ON messages(processed);
+CREATE INDEX IF NOT EXISTS idx_messages_flagged ON messages(flagged);
+CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp DESC);
 
-CREATE INDEX idx_advisories_message_id ON advisories(message_id);
-CREATE INDEX idx_advisories_moment_id ON advisories(moment_id);
-CREATE INDEX idx_advisories_type ON advisories(advisory_type);
-CREATE INDEX idx_advisories_escalation ON advisories(escalation_suggested);
-CREATE INDEX idx_advisories_reviewed ON advisories(reviewed);
+CREATE INDEX IF NOT EXISTS idx_advisories_message_id ON advisories(message_id);
+CREATE INDEX IF NOT EXISTS idx_advisories_type ON advisories(advisory_type);
+CREATE INDEX IF NOT EXISTS idx_advisories_escalation ON advisories(escalation_suggested);
 
-CREATE INDEX idx_flags_message_id ON flags(message_id);
-CREATE INDEX idx_flags_moment_id ON flags(moment_id);
-CREATE INDEX idx_flags_severity ON flags(severity);
-CREATE INDEX idx_flags_resolved ON flags(resolved);
+CREATE INDEX IF NOT EXISTS idx_flags_message_id ON flags(message_id);
+CREATE INDEX IF NOT EXISTS idx_flags_severity ON flags(severity);
 
 -- RLS Policies
 ALTER TABLE sponsors ENABLE ROW LEVEL SECURITY;
@@ -210,7 +196,7 @@ BEGIN
       FROM broadcasts WHERE status = 'completed'
     ),
     'pending_moderation', (
-      SELECT COUNT(*) FROM advisories WHERE escalation_suggested = true AND reviewed = false
+      SELECT COUNT(*) FROM advisories WHERE escalation_suggested = true
     ),
     'regions_breakdown', (
       SELECT json_object_agg(region, count)

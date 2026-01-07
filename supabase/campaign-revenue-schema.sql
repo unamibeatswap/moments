@@ -1,5 +1,5 @@
 -- Enhanced Campaign Revenue & Budget Management
-CREATE TABLE campaign_budgets (
+CREATE TABLE IF NOT EXISTS campaign_budgets (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   campaign_id UUID REFERENCES campaigns(id) ON DELETE CASCADE,
   total_budget DECIMAL(12,2) NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE campaign_budgets (
 );
 
 -- Campaign Performance Metrics
-CREATE TABLE campaign_metrics (
+CREATE TABLE IF NOT EXISTS campaign_metrics (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   campaign_id UUID REFERENCES campaigns(id) ON DELETE CASCADE,
   messages_sent INTEGER DEFAULT 0,
@@ -28,7 +28,7 @@ CREATE TABLE campaign_metrics (
 );
 
 -- Revenue Tracking
-CREATE TABLE revenue_events (
+CREATE TABLE IF NOT EXISTS revenue_events (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   campaign_id UUID REFERENCES campaigns(id),
   sponsor_id UUID REFERENCES sponsors(id),
@@ -40,7 +40,7 @@ CREATE TABLE revenue_events (
 );
 
 -- Campaign Optimization Rules (MCP Integration)
-CREATE TABLE campaign_optimization_rules (
+CREATE TABLE IF NOT EXISTS campaign_optimization_rules (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   campaign_id UUID REFERENCES campaigns(id),
   rule_type TEXT CHECK (rule_type IN ('budget_cap', 'performance_threshold', 'audience_filter', 'time_optimization')),
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS sponsor_assets (
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE INDEX idx_campaign_budgets_campaign_id ON campaign_budgets(campaign_id);
-CREATE INDEX idx_campaign_metrics_campaign_id ON campaign_metrics(campaign_id);
-CREATE INDEX idx_revenue_events_campaign_id ON revenue_events(campaign_id);
-CREATE INDEX idx_revenue_events_created_at ON revenue_events(created_at);
+CREATE INDEX IF NOT EXISTS idx_campaign_budgets_campaign_id ON campaign_budgets(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_campaign_metrics_campaign_id ON campaign_metrics(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_revenue_events_campaign_id ON revenue_events(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_revenue_events_created_at ON revenue_events(created_at);

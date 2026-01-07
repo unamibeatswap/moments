@@ -21,9 +21,11 @@ CREATE INDEX IF NOT EXISTS idx_campaign_advisories_escalation ON campaign_adviso
 -- RLS policy for campaign advisories
 ALTER TABLE campaign_advisories ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admin view campaign advisories" ON campaign_advisories;
 CREATE POLICY "Admin view campaign advisories" ON campaign_advisories
   FOR SELECT USING (check_admin_role('moderator'));
 
+DROP POLICY IF EXISTS "Admin manage campaign advisories" ON campaign_advisories;
 CREATE POLICY "Admin manage campaign advisories" ON campaign_advisories
   FOR ALL USING (check_admin_role('content_admin'));
 

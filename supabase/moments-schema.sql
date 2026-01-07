@@ -1,7 +1,7 @@
 -- Moments App Enhanced Schema
 
 -- Sponsors table
-CREATE TABLE sponsors (
+CREATE TABLE IF NOT EXISTS sponsors (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   display_name TEXT NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE sponsors (
 );
 
 -- Moments table (content to be broadcasted)
-CREATE TABLE moments (
+CREATE TABLE IF NOT EXISTS moments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   title TEXT NOT NULL,
   content TEXT NOT NULL,
@@ -30,7 +30,7 @@ CREATE TABLE moments (
 );
 
 -- Broadcast logs
-CREATE TABLE broadcasts (
+CREATE TABLE IF NOT EXISTS broadcasts (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   moment_id UUID REFERENCES moments(id),
   recipient_count INTEGER DEFAULT 0,
@@ -42,7 +42,7 @@ CREATE TABLE broadcasts (
 );
 
 -- User subscriptions (opt-in/opt-out)
-CREATE TABLE subscriptions (
+CREATE TABLE IF NOT EXISTS subscriptions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   phone_number TEXT UNIQUE NOT NULL,
   opted_in BOOLEAN DEFAULT TRUE,
@@ -55,11 +55,11 @@ CREATE TABLE subscriptions (
 );
 
 -- Add indexes
-CREATE INDEX idx_moments_status ON moments(status);
-CREATE INDEX idx_moments_scheduled ON moments(scheduled_at);
-CREATE INDEX idx_moments_region ON moments(region);
-CREATE INDEX idx_subscriptions_phone ON subscriptions(phone_number);
-CREATE INDEX idx_subscriptions_opted_in ON subscriptions(opted_in);
+CREATE INDEX IF NOT EXISTS idx_moments_status ON moments(status);
+CREATE INDEX IF NOT EXISTS idx_moments_scheduled ON moments(scheduled_at);
+CREATE INDEX IF NOT EXISTS idx_moments_region ON moments(region);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_phone ON subscriptions(phone_number);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_opted_in ON subscriptions(opted_in);
 
 -- RLS policies
 ALTER TABLE sponsors ENABLE ROW LEVEL SECURITY;
@@ -69,7 +69,8 @@ ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 
 -- Insert default sponsor
 INSERT INTO sponsors (name, display_name) VALUES 
-('unami_foundation', 'Unami Foundation Partners');
+('unami_foundation', 'Unami Foundation Partners')
+ON CONFLICT (name) DO NOTHING;
 
 -- Sample regions and categories
 COMMENT ON COLUMN moments.region IS 'South African provinces: KZN, WC, GP, EC, FS, LP, MP, NC, NW';

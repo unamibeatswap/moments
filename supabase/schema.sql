@@ -1,5 +1,5 @@
 -- Messages table
-CREATE TABLE messages (
+CREATE TABLE IF NOT EXISTS messages (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   whatsapp_id TEXT UNIQUE NOT NULL,
   from_number TEXT NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE messages (
 );
 
 -- Media assets table
-CREATE TABLE media (
+CREATE TABLE IF NOT EXISTS media (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   message_id UUID REFERENCES messages(id),
   whatsapp_media_id TEXT NOT NULL,
@@ -27,7 +27,7 @@ CREATE TABLE media (
 );
 
 -- Advisory flags (MCP intelligence output)
-CREATE TABLE advisories (
+CREATE TABLE IF NOT EXISTS advisories (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   message_id UUID REFERENCES messages(id),
   advisory_type TEXT NOT NULL, -- language, urgency, harm, spam
@@ -38,7 +38,7 @@ CREATE TABLE advisories (
 );
 
 -- Trust & safety flags
-CREATE TABLE flags (
+CREATE TABLE IF NOT EXISTS flags (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   message_id UUID REFERENCES messages(id),
   flag_type TEXT NOT NULL,
@@ -59,8 +59,18 @@ INSERT INTO storage.buckets (id, name, public) VALUES
   ('audio', 'audio', true),
   ('images', 'images', true),
   ('videos', 'videos', true),
-  ('documents', 'documents', true);
+  ('documents', 'documents', true)
+ON CONFLICT (id) DO NOTHING;
 
 -- Storage policies
-CREATE POLICY "Public read access" ON storage.objects FOR SELECT USING (true);
-CREATE POLICY "Service role upload" ON storage.objects FOR INSERT WITH CHECK (true);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND policyname = 'Public read access') THEN
+    CREATE POLICY "Public read access" ON storage.objects FOR SELECT USING (true);
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND policyname = 'Service role upload') THEN
+    CREATE POLICY "Service role upload" ON storage.objects FOR INSERT WITH CHECK (true);
+  END IF;
+END $$;

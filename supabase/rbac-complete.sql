@@ -19,45 +19,7 @@ CREATE INDEX IF NOT EXISTS idx_admin_roles_user_id ON admin_roles(user_id);
 CREATE INDEX IF NOT EXISTS idx_admin_roles_role ON admin_roles(role);
 
 -- Function to check admin role
-CREATE OR REPLACE FUNCTION check_admin_role(required_role TEXT)
-RETURNS BOOLEAN AS $$
-DECLARE
-  user_uuid UUID;
-  user_role TEXT;
-BEGIN
-  -- Get user ID from JWT
-  user_uuid := (current_setting('request.jwt.claims', true)::json->>'sub')::uuid;
-  
-  -- Return false if no user
-  IF user_uuid IS NULL THEN
-    RETURN false;
-  END IF;
-  
-  -- Get user role from admin_roles table
-  SELECT role INTO user_role
-  FROM admin_roles
-  WHERE user_id = user_uuid;
-  
-  -- Return false if no role found
-  IF user_role IS NULL THEN
-    RETURN false;
-  END IF;
-  
-  -- Check role hierarchy
-  CASE required_role
-    WHEN 'viewer' THEN
-      RETURN user_role IN ('viewer', 'moderator', 'content_admin', 'superadmin');
-    WHEN 'moderator' THEN
-      RETURN user_role IN ('moderator', 'content_admin', 'superadmin');
-    WHEN 'content_admin' THEN
-      RETURN user_role IN ('content_admin', 'superadmin');
-    WHEN 'superadmin' THEN
-      RETURN user_role = 'superadmin';
-    ELSE
-      RETURN false;
-  END CASE;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- Skip function recreation if it already exists with dependencies
 
 -- Function to get current user role
 CREATE OR REPLACE FUNCTION get_current_user_role()
@@ -172,7 +134,7 @@ ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
 INSERT INTO system_settings (setting_key, setting_value, description) VALUES
 ('whatsapp_number', '"+27 65 829 5041"', 'WhatsApp Business number for broadcasts'),
 ('broadcast_rate_limit', '100', 'Maximum broadcasts per minute'),
-('mcp_endpoint', '"https://mcp-production.up.railway.app/advisory"', 'MCP advisory service endpoint'),
+('mcp_endpoint', '"supabase-native"', 'MCP advisory service endpoint - using Supabase native function'),
 ('default_language', '"eng"', 'Default language for content'),
 ('supported_regions', '["KZN","WC","GP","EC","FS","LP","MP","NC","NW"]', 'Supported South African provinces'),
 ('supported_categories', '["Education","Safety","Culture","Opportunity","Events","Health","Technology"]', 'Supported content categories')
