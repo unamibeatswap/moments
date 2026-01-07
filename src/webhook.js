@@ -3,10 +3,9 @@ import { callMCPAdvisory } from './advisory.js';
 import { detectLanguage } from './language.js';
 import { downloadAndStoreMedia } from './media.js';
 import { 
-  sendWelcomeMessage, 
-  sendUnsubscribeConfirmation,
-  sendPreferencesMessage 
-} from './broadcast-compliant.js';
+  sendWelcomeHybrid, 
+  sendUnsubscribeHybrid
+} from './broadcast-hybrid.js';
 import axios from 'axios';
 
 export function verifyWebhook(req, res) {
@@ -92,9 +91,10 @@ async function processMessage(message, value) {
       return;
     }
 
-    // Handle opt-in commands
-    if (content.toLowerCase().trim() === 'start' || content.toLowerCase().trim() === 'join') {
-      await handleOptIn(fromNumber);
+    // Handle user replies to NGO re-engagement templates
+    if (content.toLowerCase().includes('yes') || content.toLowerCase().includes('ok')) {
+      const { handleNGOReply } = await import('./broadcast-ngo.js');
+      await handleNGOReply(fromNumber, content);
       return;
     }
 
@@ -147,12 +147,12 @@ async function processMessage(message, value) {
       console.error('MCP advisory error:', mcpError);
     }
 
-    // Trigger n8n workflow if configured (optional)
+    // Trigger n8n NGO workflow if configured
     if (process.env.N8N_WEBHOOK_URL) {
-      await triggerN8nWorkflow({
+      await triggerN8nNGOWorkflow({
         message: messageRecord,
         advisory: { escalation_needed: false }, // Will be updated by MCP
-        trust: { escalation_needed: false }
+        ngo_pattern: 'template_reply_processing'
       });
     }
 
@@ -179,10 +179,10 @@ async function handleOptOut(phoneNumber) {
         last_activity: new Date().toISOString()
       });
     
-    // Send compliant unsubscribe confirmation using approved template
-    await sendUnsubscribeConfirmation(phoneNumber);
+    // Send unsubscribe confirmation using approved template
+    await sendUnsubscribeHybrid(phoneNumber);
     
-    console.log(`User ${phoneNumber} opted out with template confirmation`);
+    console.log(`User ${phoneNumber} opted out with hybrid confirmation`);
   } catch (error) {
     console.error('Opt-out error:', error);
   }
@@ -208,24 +208,24 @@ async function handleOptIn(phoneNumber) {
         double_opt_in_confirmed: true
       });
     
-    // Send compliant welcome message using approved template
-    await sendWelcomeMessage(phoneNumber, defaultRegion, defaultCategories);
+    // Send welcome using hybrid system
+    await sendWelcomeHybrid(phoneNumber, defaultRegion, defaultCategories);
     
-    console.log(`User ${phoneNumber} opted in with template welcome`);
+    console.log(`User ${phoneNumber} opted in with hybrid welcome`);
   } catch (error) {
     console.error('Opt-in error:', error);
   }
 }
 
-async function triggerN8nWorkflow(data) {
+async function triggerN8nNGOWorkflow(data) {
   try {
     const n8nUrl = process.env.N8N_WEBHOOK_URL;
     if (!n8nUrl) {
-      console.log('N8N webhook URL not configured, skipping workflow trigger');
+      console.log('N8N webhook URL not configured, skipping NGO workflow trigger');
       return;
     }
 
-    const response = await axios.post(`${n8nUrl}/webhook/whatsapp-inbound`, data, {
+    const response = await axios.post(`${n8nUrl}/webhook/ngo-message-webhook`, data, {
       timeout: 5000,
       headers: {
         'Content-Type': 'application/json',
@@ -233,9 +233,9 @@ async function triggerN8nWorkflow(data) {
       }
     });
 
-    console.log('N8N workflow triggered successfully');
+    console.log('N8N NGO workflow triggered successfully');
   } catch (error) {
-    console.error('N8N workflow trigger failed:', error.message);
+    console.error('N8N NGO workflow trigger failed:', error.message);
     // Don't throw - n8n failure shouldn't break message processing
   }
 }

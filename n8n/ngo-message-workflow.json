@@ -1,0 +1,326 @@
+{
+  "name": "NGO-Compliant Message Processing",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ngo-message-webhook",
+        "responseMode": "responseNode"
+      },
+      "id": "webhook-ngo",
+      "name": "NGO Message Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.message.content.toLowerCase()}}",
+              "operation": "contains",
+              "value2": "yes"
+            }
+          ]
+        }
+      },
+      "id": "check-positive-reply",
+      "name": "Check Positive Reply",
+      "type": "n8n-nodes-base.if",
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/pending_moments",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_KEY}}"
+            },
+            {
+              "name": "Authorization", 
+              "value": "Bearer {{$env.SUPABASE_SERVICE_KEY}}"
+            }
+          ]
+        },
+        "qs": {
+          "phone_number": "eq.{{$json.message.from_number}}",
+          "delivered_at": "is.null",
+          "expires_at": "gt.{{new Date().toISOString()}}"
+        }
+      },
+      "id": "get-pending-moment",
+      "name": "Get Pending Moment",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.length}}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "has-pending-content",
+      "name": "Has Pending Content",
+      "type": "n8n-nodes-base.if",
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.RAILWAY_API_URL}}/admin/ngo/deliver-content",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.ADMIN_TOKEN}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone_number",
+              "value": "={{$json.message.from_number}}"
+            },
+            {
+              "name": "pending_moment_id",
+              "value": "={{$json[0].id}}"
+            },
+            {
+              "name": "user_reply",
+              "value": "={{$json.message.content}}"
+            }
+          ]
+        }
+      },
+      "id": "deliver-rich-content",
+      "name": "Deliver Rich Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1120, 100]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.SUPABASE_URL}}/rpc/mcp_advisory",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.SUPABASE_SERVICE_KEY}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message_content",
+              "value": "={{$json.message.content}}"
+            },
+            {
+              "name": "message_language",
+              "value": "={{$json.message.language_detected}}"
+            },
+            {
+              "name": "message_type",
+              "value": "ngo_reply"
+            },
+            {
+              "name": "from_number",
+              "value": "={{$json.message.from_number}}"
+            }
+          ]
+        }
+      },
+      "id": "mcp-analysis",
+      "name": "MCP Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [460, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.escalation_suggested}}",
+              "operation": "equal",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-escalation",
+      "name": "Check Escalation",
+      "type": "n8n-nodes-base.if",
+      "position": [680, 500]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.SUPABASE_URL}}/rest/v1/flags",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.SUPABASE_SERVICE_KEY}}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.SUPABASE_SERVICE_KEY}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message_id",
+              "value": "={{$json.message.id}}"
+            },
+            {
+              "name": "flag_type",
+              "value": "ngo_escalated"
+            },
+            {
+              "name": "severity",
+              "value": "high"
+            },
+            {
+              "name": "notes",
+              "value": "NGO reply flagged for review"
+            }
+          ]
+        }
+      },
+      "id": "flag-for-review",
+      "name": "Flag for Review",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"status\": \"processed\", \"ngo_pattern\": \"template_to_content\", \"delivered\": {{$json.delivered || false}}}"
+      },
+      "id": "response",
+      "name": "Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [1340, 300]
+    }
+  ],
+  "connections": {
+    "NGO Message Webhook": {
+      "main": [
+        [
+          {
+            "node": "Check Positive Reply",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "MCP Analysis",
+            "type": "main", 
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Positive Reply": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Moment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Moment": {
+      "main": [
+        [
+          {
+            "node": "Has Pending Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Pending Content": {
+      "main": [
+        [
+          {
+            "node": "Deliver Rich Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP Analysis": {
+      "main": [
+        [
+          {
+            "node": "Check Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Escalation": {
+      "main": [
+        [
+          {
+            "node": "Flag for Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deliver Rich Content": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flag for Review": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

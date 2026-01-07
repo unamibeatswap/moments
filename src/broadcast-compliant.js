@@ -61,11 +61,9 @@ export async function broadcastMomentCompliant(momentId) {
 
     if (broadcastError) throw broadcastError;
 
-    // Choose appropriate template and build parameters
-    const templateName = moment.is_sponsored ? 'partner_update' : 'community_update';
-    const parameters = moment.is_sponsored ? 
-      [moment.title + '\n\n' + moment.content, moment.region, moment.category, moment.sponsors?.display_name || 'Partner'] :
-      [moment.title + '\n\n' + moment.content, moment.region, moment.category];
+    // Use only approved templates
+    const templateName = 'hello_world'; // Only working template
+    const parameters = []; // hello_world has no parameters
 
     // Send compliant broadcast using approved templates
     const results = await sendCompliantBroadcast(
@@ -112,13 +110,12 @@ export async function broadcastMomentCompliant(momentId) {
 // Send welcome message using approved template
 export async function sendWelcomeMessage(phoneNumber, region, categories) {
   try {
-    const parameters = buildWelcomeParams(region, categories);
-    
+    // Use hello_world template since welcome_confirmation was rejected
     const result = await sendTemplateMessage(
       phoneNumber,
-      'welcome_confirmation',
+      'hello_world',
       'en',
-      parameters
+      []
     );
 
     // Log the welcome message
@@ -126,8 +123,8 @@ export async function sendWelcomeMessage(phoneNumber, region, categories) {
       .from('template_messages')
       .insert({
         phone_number: phoneNumber,
-        template_name: 'welcome_confirmation',
-        parameters,
+        template_name: 'hello_world',
+        parameters: [],
         status: 'sent',
         whatsapp_message_id: result.messages?.[0]?.id
       });
