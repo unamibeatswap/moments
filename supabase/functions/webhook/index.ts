@@ -141,39 +141,47 @@ serve(async (req) => {
               
               console.log('Help sent to:', message.from)
             } else {
-              // Process as community content with MCP moderation
+              // Process as community content with Supabase MCP
               try {
-                // Get MCP advisory
-                const advisory = await callMCPAdvisory({
-                  id: insertedMessage.id,
-                  content: message.text?.body || '',
-                  language_detected: 'eng',
+                // Call Supabase MCP function
+                const { data: advisory, error: mcpError } = await supabase.rpc('mcp_advisory', {
+                  message_content: message.text?.body || '',
+                  message_language: 'eng',
                   message_type: 'text',
                   from_number: message.from,
-                  timestamp: new Date().toISOString()
+                  message_timestamp: new Date().toISOString()
                 })
                 
-                // Only publish if MCP approves
-                if (advisory.should_publish && !advisory.is_duplicate) {
-                  const words = advisory.cleaned_content.trim().split(' ')
-                  const title = words.length <= 8 ? advisory.cleaned_content : words.slice(0, 8).join(' ') + '...'
-                  
-                  // Determine urgency for broadcast timing
-                  const isUrgent = advisory.urgency_level === 'high'
+                // Default safe advisory if MCP fails
+                const safeAdvisory = advisory || {
+                  harm_signals: { confidence: 0 },
+                  spam_indicators: { confidence: 0 },
+                  urgency_level: 'low'
+                }
+                
+                // Simple moderation logic
+                const shouldPublish = (safeAdvisory.harm_signals?.confidence || 0) < 0.7 && 
+                                    (safeAdvisory.spam_indicators?.confidence || 0) < 0.7
+                
+                if (shouldPublish) {
+                  const content = message.text?.body || ''
+                  const words = content.trim().split(' ')
+                  const title = words.length <= 8 ? content : words.slice(0, 8).join(' ') + '...'
                   
                   const { data: moment, error: momentError } = await supabase
                     .from('moments')
                     .insert({
                       title: title,
-                      content: advisory.cleaned_content, // Use cleaned content
-                      raw_content: message.text?.body || '', // Preserve original
+                      content: content,
+                      raw_content: content,
                       region: 'National',
                       category: 'Community',
                       status: 'broadcasted',
                       broadcasted_at: new Date().toISOString(),
                       created_by: 'community',
+                      content_source: 'community',
                       is_sponsored: false,
-                      urgency_level: advisory.urgency_level || 'low'
+                      urgency_level: safeAdvisory.urgency_level || 'low'
                     })
                     .select()
                     .single()
@@ -181,18 +189,11 @@ serve(async (req) => {
                   if (!momentError && moment) {
                     console.log('Community moment created:', moment.title)
                     
-                    // WhatsApp compliant acknowledgment
                     const ackMsg = `📝 Thank you for sharing.\n\nYour message has been noted and shared for community awareness.\n\n🌐 View: moments.unamifoundation.org`
                     await sendWhatsAppMessage(message.from, ackMsg)
-                    
-                    // Broadcast to subscribers if urgent
-                    if (isUrgent) {
-                      // TODO: Trigger immediate broadcast
-                      console.log('Urgent moment - triggering immediate broadcast')
-                    }
                   }
                 } else {
-                  console.log('Message blocked by MCP:', advisory.action)
+                  console.log('Message blocked by MCP moderation')
                 }
               } catch (error) {
                 console.error('Community processing failed:', error)
