@@ -98,7 +98,6 @@ serve(async (req) => {
               message_type: message.type,
               content: message.text?.body || message.caption || '',
               timestamp: new Date(parseInt(message.timestamp) * 1000).toISOString(),
-              raw_data: message,
               processed: false
             })
 
