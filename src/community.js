@@ -1,36 +1,38 @@
 import { supabase } from '../config/supabase.js';
-import { callMCPAdvisory } from './advisory.js';
 
-// Process community messages into moments
+// Process community messages into moments using Supabase MCP
 export async function processUserMessage(messageId) {
   try {
-    // Get message with advisory
+    // Get message
     const { data: message, error: msgError } = await supabase
       .from('messages')
-      .select(`
-        *,
-        advisories(*)
-      `)
+      .select('*')
       .eq('id', messageId)
       .single();
 
-    if (msgError || !message) return null;
+    if (msgError || !message || message.processed) return null;
 
-    // Skip if already processed or no content
-    if (message.processed || !message.content?.trim()) return null;
+    // Call Supabase MCP function
+    const { data: advisory, error: mcpError } = await supabase.rpc('mcp_advisory', {
+      message_content: message.content,
+      message_language: message.language_detected || 'eng',
+      message_type: message.message_type,
+      from_number: message.from_number,
+      message_timestamp: message.timestamp
+    });
 
-    // Get or create MCP advisory
-    let advisory = message.advisories?.[0];
-    if (!advisory) {
-      advisory = await callMCPAdvisory(message);
-    }
+    // Use advisory or safe defaults
+    const safeAdvisory = advisory || {
+      harm_signals: { confidence: 0 },
+      spam_indicators: { confidence: 0 },
+      urgency_level: 'low'
+    };
 
-    // Auto-publish if safe (confidence < 0.7 for harmful content)
-    const shouldPublish = !advisory?.escalation_suggested && 
-                         (advisory?.confidence || 0) < 0.7;
+    // Auto-publish if safe
+    const shouldPublish = (safeAdvisory.harm_signals?.confidence || 0) < 0.7 && 
+                         (safeAdvisory.spam_indicators?.confidence || 0) < 0.7;
 
     if (shouldPublish) {
-      // Create community moment
       const { data: moment, error: momentError } = await supabase
         .from('moments')
         .insert({
@@ -42,19 +44,16 @@ export async function processUserMessage(messageId) {
           status: 'broadcasted',
           broadcasted_at: new Date().toISOString(),
           created_by: 'community',
+          content_source: 'community',
           source_message_id: message.id,
-          is_sponsored: false
+          is_sponsored: false,
+          urgency_level: safeAdvisory.urgency_level || 'low'
         })
         .select()
         .single();
 
       if (!momentError && moment) {
-        // Mark message as processed
-        await supabase
-          .from('messages')
-          .update({ processed: true })
-          .eq('id', messageId);
-
+        await supabase.from('messages').update({ processed: true }).eq('id', messageId);
         return moment;
       }
     }

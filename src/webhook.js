@@ -1,5 +1,4 @@
 import { supabase } from '../config/supabase.js';
-import { callMCPAdvisory } from './advisory.js';
 import { detectLanguage } from './language.js';
 import { downloadAndStoreMedia } from './media.js';
 import { 
@@ -133,18 +132,17 @@ async function processMessage(message, value) {
       }
     }
 
-    // Call MCP advisory (Supabase-native)
+    // Call Supabase MCP function directly
     try {
-      await callMCPAdvisory({
-        id: messageRecord.id,
-        content,
-        language_detected: languageDetected,
+      await supabase.rpc('mcp_advisory', {
+        message_content: content,
+        message_language: languageDetected,
         message_type: messageType,
         from_number: fromNumber,
-        timestamp: new Date().toISOString()
+        message_timestamp: new Date().toISOString()
       });
     } catch (mcpError) {
-      console.error('MCP advisory error:', mcpError);
+      console.error('Supabase MCP error:', mcpError);
     }
 
     // Trigger n8n NGO workflow if configured

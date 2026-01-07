@@ -1,44 +1,38 @@
 import { supabase } from '../config/supabase.js';
 
-const MCP_ENDPOINT = process.env.MCP_ENDPOINT || 'https://mcp-production.up.railway.app/advisory';
-
 export async function screenCampaignContent(campaignData) {
   try {
-    const response = await fetch(MCP_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        content: campaignData.content,
-        title: campaignData.title,
-        type: 'sponsored_content',
-        metadata: {
-          sponsor_id: campaignData.sponsor_id,
-          budget: campaignData.budget,
-          regions: campaignData.target_regions,
-          categories: campaignData.target_categories
-        }
-      })
+    const { data, error } = await supabase.rpc('mcp_advisory', {
+      message_content: campaignData.content,
+      message_language: 'eng',
+      message_type: 'campaign',
+      from_number: 'system',
+      message_timestamp: new Date().toISOString()
     });
 
-    if (!response.ok) {
-      return { safe: true, confidence: 0.5, advisory: 'MCP unavailable - manual review required' };
+    if (error) {
+      return { safe: true, confidence: 0.5, advisory: 'Supabase MCP unavailable - manual review required' };
     }
 
-    const advisory = await response.json();
+    const advisory = data || {};
     
     // Store advisory for audit trail
     await supabase.from('campaign_advisories').insert({
       campaign_id: campaignData.id,
       advisory_data: advisory,
-      confidence: advisory.confidence || 0.5,
-      escalation_suggested: advisory.confidence > 0.8,
+      confidence: advisory.harm_signals?.confidence || 0.5,
+      escalation_suggested: (advisory.harm_signals?.confidence || 0) > 0.8,
       created_at: new Date().toISOString()
     });
 
-    return advisory;
+    return {
+      safe: (advisory.harm_signals?.confidence || 0) < 0.7,
+      confidence: advisory.harm_signals?.confidence || 0.5,
+      advisory: advisory
+    };
   } catch (error) {
-    console.error('MCP screening error:', error);
-    return { safe: true, confidence: 0.5, advisory: 'MCP error - manual review required' };
+    console.error('Supabase MCP screening error:', error);
+    return { safe: true, confidence: 0.5, advisory: 'Supabase MCP error - manual review required' };
   }
 }
 

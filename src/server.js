@@ -5,7 +5,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { handleWebhook, verifyWebhook } from './webhook.js';
 import { supabase } from '../config/supabase.js';
-import { callMCPAdvisory } from './advisory.js';
 import { healthCheck } from './health.js';
 import { scheduleNextBroadcasts } from './broadcast.js';
 import { processUrgentMoments, processWeeklyDigest } from './urgency.js';
@@ -128,6 +127,7 @@ app.get('/health', async (req, res) => {
 });
 
 // Test endpoints
+// Test endpoints
 app.get('/test-supabase', async (req, res) => {
   try {
     const { data, error } = await supabase.from('messages').select('count').limit(1);
@@ -140,18 +140,18 @@ app.get('/test-supabase', async (req, res) => {
 
 app.get('/test-mcp', async (req, res) => {
   try {
-    const testData = {
-      id: 'test',
-      content: 'test message',
-      language_detected: 'eng',
+    const { data, error } = await supabase.rpc('mcp_advisory', {
+      message_content: 'test message',
+      message_language: 'eng',
       message_type: 'text',
       from_number: '27123456789',
-      timestamp: new Date().toISOString()
-    };
-    const advisory = await callMCPAdvisory(testData);
-    res.json({ status: 'mcp_working', advisory });
+      message_timestamp: new Date().toISOString()
+    });
+    
+    if (error) throw error;
+    res.json({ status: 'supabase_mcp_working', advisory: data });
   } catch (err) {
-    res.json({ status: 'mcp_failed', error: err.message });
+    res.json({ status: 'supabase_mcp_failed', error: err.message });
   }
 });
 
