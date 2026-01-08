@@ -160,6 +160,33 @@ serve(async (req) => {
       })
     }
 
+    // Compliance check endpoint
+    if (path.includes('/compliance/check') && method === 'POST' && body) {
+      const { data: result, error } = await supabase
+        .rpc('check_campaign_compliance', {
+          campaign_title: body.title || '',
+          campaign_content: body.content || '',
+          campaign_category: body.category || ''
+        })
+      
+      if (error) throw error
+      return new Response(JSON.stringify({ compliance: result }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Get compliance categories
+    if (path.includes('/compliance/categories') && method === 'GET') {
+      const { data: categories } = await supabase
+        .from('campaign_compliance_categories')
+        .select('*')
+        .order('category_type, category_name')
+      
+      return new Response(JSON.stringify({ categories: categories || [] }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     // Enhanced Analytics with Revenue
     if (path.includes('/analytics/revenue') && method === 'GET') {
       const [campaigns, revenue, budgets] = await Promise.all([
@@ -256,6 +283,36 @@ serve(async (req) => {
       })
     }
 
+    // Update moment
+    if (path.includes('/moments/') && method === 'PUT' && body) {
+      const momentId = path.split('/moments/')[1]
+      const { data, error } = await supabase
+        .from('moments')
+        .update(body)
+        .eq('id', momentId)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return new Response(JSON.stringify({ moment: data }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Delete moment
+    if (path.includes('/moments/') && method === 'DELETE') {
+      const momentId = path.split('/moments/')[1]
+      const { error } = await supabase
+        .from('moments')
+        .delete()
+        .eq('id', momentId)
+      
+      if (error) throw error
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     // Sponsor assets endpoint
     if (path.includes('/sponsors/') && path.includes('/assets') && method === 'GET') {
       const sponsorId = path.split('/sponsors/')[1].split('/assets')[0]
@@ -342,31 +399,25 @@ serve(async (req) => {
       })
     }
 
-    // Compliance check endpoint
-    if (path.includes('/compliance/check') && method === 'POST' && body) {
-      const { data: result, error } = await supabase
-        .rpc('check_campaign_compliance', {
-          campaign_title: body.title || '',
-          campaign_content: body.content || '',
-          campaign_category: body.category || ''
+    // Update settings
+    if (path.includes('/settings/') && method === 'PUT' && body) {
+      const settingKey = path.split('/settings/')[1]
+      const { data, error } = await supabase
+        .from('system_settings')
+        .update({ 
+          setting_value: body.value,
+          updated_at: new Date().toISOString()
         })
+        .eq('setting_key', settingKey)
+        .select()
+        .single()
       
       if (error) throw error
-      return new Response(JSON.stringify({ compliance: result }), {
+      return new Response(JSON.stringify({ setting: data }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    // Get compliance categories
-    if (path.includes('/compliance/categories') && method === 'GET') {
-      const { data: categories } = await supabase
-        .from('campaign_compliance_categories')
-        .select('*')
-        .order('category_type, category_name')
-      
-      return new Response(JSON.stringify({ categories: categories || [] }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
     // Create campaign
     if (path.includes('/campaigns') && method === 'POST' && body) {
       const { data, error } = await supabase
@@ -391,54 +442,6 @@ serve(async (req) => {
       })
     }
 
-    // Update settings
-    if (path.includes('/settings/') && method === 'PUT' && body) {
-      const settingKey = path.split('/settings/')[1]
-      const { data, error } = await supabase
-        .from('system_settings')
-        .update({ 
-          setting_value: body.value,
-          updated_at: new Date().toISOString()
-        })
-        .eq('setting_key', settingKey)
-        .select()
-        .single()
-      
-      if (error) throw error
-      return new Response(JSON.stringify({ setting: data }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    // Delete moment
-    if (path.includes('/moments/') && method === 'DELETE') {
-      const momentId = path.split('/moments/')[1]
-      const { error } = await supabase
-        .from('moments')
-        .delete()
-        .eq('id', momentId)
-      
-      if (error) throw error
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    // Update moment
-    if (path.includes('/moments/') && method === 'PUT' && body) {
-      const momentId = path.split('/moments/')[1]
-      const { data, error } = await supabase
-        .from('moments')
-        .update(body)
-        .eq('id', momentId)
-        .select()
-        .single()
-      
-      if (error) throw error
-      return new Response(JSON.stringify({ moment: data }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
     // Get campaigns
     if (path.includes('/campaigns') && method === 'GET') {
       const { data: campaigns } = await supabase
