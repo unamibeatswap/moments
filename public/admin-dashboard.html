@@ -147,6 +147,51 @@
         .best-practice h4 { color: #1e40af; margin-bottom: 0.5rem; }
         .best-practice ul { margin-left: 1rem; }
         .best-practice li { margin-bottom: 0.25rem; color: #374151; }
+        .compliance-result {
+            border-radius: 4px;
+            padding: 12px;
+            margin-top: 8px;
+        }
+        .compliance-result.risk-low {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+        }
+        .compliance-result.risk-medium {
+            background: #fefce8;
+            border: 1px solid #fde047;
+            color: #854d0e;
+        }
+        .compliance-result.risk-high {
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            color: #c2410c;
+        }
+        .compliance-result.risk-critical {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+        }
+        .compliance-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .compliance-recommendation {
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+        .compliance-violations {
+            font-size: 0.85em;
+        }
+        .compliance-violations ul {
+            margin: 4px 0 0 16px;
+        }
+        .compliance-violations li {
+            margin-bottom: 2px;
+        }
     </style>
 </head>
 <body>
@@ -1057,5 +1102,6 @@
     <script src="/js/admin.js"></script>
     <script src="/js/admin-users.js"></script>
     <script src="/js/analytics.js"></script>
+    <script src="/js/compliance.js"></script>
 </body>
 </html>

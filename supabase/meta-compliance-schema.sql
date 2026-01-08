@@ -94,6 +94,7 @@ AS $$
 DECLARE
     compliance_result JSON;
     category_info RECORD;
+    restriction RECORD;
     restriction_violations TEXT[] := '{}';
     risk_score INTEGER := 0;
     is_compliant BOOLEAN := TRUE;

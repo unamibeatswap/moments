@@ -342,8 +342,32 @@ serve(async (req) => {
       })
     }
 
-    // Create campaign
-    if (path.includes('/campaigns') && method === 'POST' && body) {
+    // Compliance check endpoint
+    if (path.includes('/compliance/check') && method === 'POST' && body) {
+      const { data: result, error } = await supabase
+        .rpc('check_campaign_compliance', {
+          campaign_title: body.title || '',
+          campaign_content: body.content || '',
+          campaign_category: body.category || ''
+        })
+      
+      if (error) throw error
+      return new Response(JSON.stringify({ compliance: result }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Get compliance categories
+    if (path.includes('/compliance/categories') && method === 'GET') {
+      const { data: categories } = await supabase
+        .from('campaign_compliance_categories')
+        .select('*')
+        .order('category_type, category_name')
+      
+      return new Response(JSON.stringify({ categories: categories || [] }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
       const { data, error } = await supabase
         .from('campaigns')
         .insert({
