@@ -990,3 +990,92 @@ function closeCampaignModal() {
     document.getElementById('campaign-modal').classList.remove('active');
     document.getElementById('campaign-form').reset();
 }
+
+// Form submission handlers
+document.addEventListener('DOMContentLoaded', () => {
+    // Create form handler
+    const createForm = document.getElementById('create-form');
+    if (createForm) {
+        createForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = document.getElementById('submit-btn');
+            setButtonLoading(submitBtn, true);
+
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            const isEdit = !!data.id;
+
+            data.is_sponsored = !!data.sponsor_id;
+
+            Object.keys(data).forEach(key => {
+                if (data[key] === '') delete data[key];
+            });
+
+            if (data.scheduled_at && data.scheduled_at.indexOf('T') !== -1) {
+                data.scheduled_at = new Date(data.scheduled_at).toISOString();
+            }
+
+            try {
+                const url = isEdit ? `/moments/${data.id}` : '/moments';
+                const method = isEdit ? 'PUT' : 'POST';
+
+                const response = await apiFetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    showSuccess(`Moment ${isEdit ? 'updated' : 'created'} successfully!`);
+                    resetForm();
+                    loadMoments();
+                } else {
+                    showError(result.error || `Failed to ${isEdit ? 'update' : 'create'} moment`);
+                }
+            } catch (error) {
+                showError(`Failed to ${isEdit ? 'update' : 'create'} moment`);
+            } finally {
+                setButtonLoading(submitBtn, false);
+            }
+        });
+    }
+
+    // Sponsor form handler
+    const sponsorForm = document.getElementById('sponsor-form');
+    if (sponsorForm) {
+        sponsorForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = document.getElementById('sponsor-submit-btn');
+            setButtonLoading(submitBtn, true);
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            const isEdit = !!data.id;
+            
+            try {
+                const url = isEdit ? `/sponsors/${data.id}` : '/sponsors';
+                const method = isEdit ? 'PUT' : 'POST';
+                
+                const response = await apiFetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    showSuccess(`Sponsor ${isEdit ? 'updated' : 'created'} successfully!`);
+                    closeSponsorModal();
+                    loadSponsors();
+                } else {
+                    document.getElementById('sponsor-message').innerHTML = `<div class="error">${result.error}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('sponsor-message').innerHTML = '<div class="error">Failed to save sponsor</div>';
+            } finally {
+                setButtonLoading(submitBtn, false);
+            }
+        });
+    }
+});
