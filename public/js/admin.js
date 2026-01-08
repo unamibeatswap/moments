@@ -796,6 +796,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
             data.is_sponsored = !!data.sponsor_id;
 
+            // Handle media files
+            const mediaFiles = formData.getAll('media_files');
+            let mediaUrls = [];
+            
+            if (mediaFiles && mediaFiles.length > 0 && mediaFiles[0].size > 0) {
+                try {
+                    const mediaFormData = new FormData();
+                    mediaFiles.forEach(file => {
+                        if (file.size > 0) {
+                            mediaFormData.append('media_files', file);
+                        }
+                    });
+                    
+                    const uploadResponse = await apiFetch('/upload-media', {
+                        method: 'POST',
+                        body: mediaFormData
+                    });
+                    
+                    const uploadResult = await uploadResponse.json();
+                    if (uploadResult.success) {
+                        mediaUrls = uploadResult.files.map(f => f.publicUrl);
+                        showSuccess(`${uploadResult.files.length} media file(s) uploaded`);
+                    }
+                } catch (uploadError) {
+                    console.error('Media upload failed:', uploadError);
+                    showError('Media upload failed, but moment will be saved without media');
+                }
+            }
+            
+            if (mediaUrls.length > 0) {
+                data.media_urls = mediaUrls;
+            }
+
             Object.keys(data).forEach(key => {
                 if (data[key] === '') delete data[key];
             });

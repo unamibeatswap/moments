@@ -39,6 +39,13 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Multer for file uploads
+import multer from 'multer';
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB
+});
+
 // Static files
 app.use(express.static(path.join(__dirname, '../public'), { index: false }));
 
@@ -247,6 +254,41 @@ app.put('/admin/sponsors/:id', authenticateAdmin, (req, res) => {
 // Delete sponsor endpoint
 app.delete('/admin/sponsors/:id', authenticateAdmin, (req, res) => {
   res.json({ success: true });
+});
+
+// Media upload endpoint
+app.post('/admin/upload-media', authenticateAdmin, upload.array('media_files', 5), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No files uploaded' });
+    }
+    
+    const uploadedFiles = [];
+    
+    for (const file of req.files) {
+      // Simulate file processing
+      const fileId = 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      const publicUrl = `/uploads/${fileId}_${file.originalname}`;
+      
+      uploadedFiles.push({
+        id: fileId,
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+        publicUrl: publicUrl
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      files: uploadedFiles,
+      message: `${uploadedFiles.length} file(s) uploaded successfully`
+    });
+    
+  } catch (error) {
+    console.error('Media upload error:', error);
+    res.status(500).json({ error: 'Upload failed' });
+  }
 });
 
 // Error handling
