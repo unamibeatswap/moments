@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { supabase } from '../config/supabase.js';
 
 dotenv.config();
 
@@ -153,20 +154,64 @@ app.get('/admin/analytics', authenticateAdmin, (req, res) => {
 });
 
 // Admin moments endpoint
-app.get('/admin/moments', authenticateAdmin, (req, res) => {
-  res.json({
-    moments: [],
-    total: 0,
-    page: 1,
-    limit: 10
-  });
+app.get('/admin/moments', authenticateAdmin, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    
+    const { data, error } = await supabase
+      .from('moments')
+      .select(`
+        *,
+        sponsors(display_name)
+      `)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+    
+    if (error) {
+      console.error('Supabase error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+    
+    const { count } = await supabase
+      .from('moments')
+      .select('*', { count: 'exact', head: true });
+    
+    res.json({
+      moments: data || [],
+      total: count || 0,
+      page,
+      limit
+    });
+    
+  } catch (error) {
+    console.error('Get moments error:', error);
+    res.status(500).json({ error: 'Failed to load moments' });
+  }
 });
 
 // Admin sponsors endpoint
-app.get('/admin/sponsors', authenticateAdmin, (req, res) => {
-  res.json({
-    sponsors: []
-  });
+app.get('/admin/sponsors', authenticateAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('sponsors')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Supabase error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+    
+    res.json({
+      sponsors: data || []
+    });
+    
+  } catch (error) {
+    console.error('Get sponsors error:', error);
+    res.status(500).json({ error: 'Failed to load sponsors' });
+  }
 });
 
 // Admin broadcasts endpoint
@@ -205,13 +250,94 @@ app.get('/admin/campaigns', authenticateAdmin, (req, res) => {
 });
 
 // Create moment endpoint
-app.post('/admin/moments', authenticateAdmin, (req, res) => {
-  res.json({ success: true, id: 'moment_' + Date.now() });
+app.post('/admin/moments', authenticateAdmin, async (req, res) => {
+  try {
+    console.log('Creating moment with data:', req.body);
+    
+    const { title, content, region, category, sponsor_id, pwa_link, scheduled_at, media_urls } = req.body;
+    
+    if (!title || !content || !region || !category) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: title, content, region, category' 
+      });
+    }
+    
+    const { data, error } = await supabase
+      .from('moments')
+      .insert({
+        title,
+        content,
+        region,
+        category,
+        sponsor_id: sponsor_id || null,
+        is_sponsored: !!sponsor_id,
+        pwa_link: pwa_link || null,
+        scheduled_at: scheduled_at || null,
+        media_urls: media_urls || [],
+        status: 'draft',
+        created_by: 'admin'
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Supabase error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+    
+    res.json({ 
+      success: true, 
+      id: data.id,
+      message: 'Moment created successfully',
+      data
+    });
+    
+  } catch (error) {
+    console.error('Create moment error:', error);
+    res.status(500).json({ error: 'Failed to create moment' });
+  }
 });
 
 // Create sponsor endpoint
-app.post('/admin/sponsors', authenticateAdmin, (req, res) => {
-  res.json({ success: true, id: 'sponsor_' + Date.now() });
+app.post('/admin/sponsors', authenticateAdmin, async (req, res) => {
+  try {
+    const { name, display_name, contact_email, website_url, logo_url } = req.body;
+    
+    if (!name || !display_name) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: name, display_name' 
+      });
+    }
+    
+    const { data, error } = await supabase
+      .from('sponsors')
+      .insert({
+        name,
+        display_name,
+        contact_email: contact_email || null,
+        website_url: website_url || null,
+        logo_url: logo_url || null,
+        active: true
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Supabase error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+    
+    res.json({ 
+      success: true, 
+      id: data.id,
+      message: 'Sponsor created successfully',
+      data
+    });
+    
+  } catch (error) {
+    console.error('Create sponsor error:', error);
+    res.status(500).json({ error: 'Failed to create sponsor' });
+  }
 });
 
 // Create campaign endpoint
@@ -266,17 +392,54 @@ app.post('/admin/upload-media', authenticateAdmin, upload.array('media_files', 5
     const uploadedFiles = [];
     
     for (const file of req.files) {
-      // Simulate file processing
-      const fileId = 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      const publicUrl = `/uploads/${fileId}_${file.originalname}`;
-      
-      uploadedFiles.push({
-        id: fileId,
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-        size: file.size,
-        publicUrl: publicUrl
-      });
+      try {
+        // Generate unique filename
+        const fileExt = file.originalname.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+        const filePath = `moments/${fileName}`;
+        
+        // Determine bucket based on file type
+        let bucket = 'documents';
+        if (file.mimetype.startsWith('image/')) bucket = 'images';
+        else if (file.mimetype.startsWith('video/')) bucket = 'videos';
+        else if (file.mimetype.startsWith('audio/')) bucket = 'audio';
+        
+        // Upload to Supabase Storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from(bucket)
+          .upload(filePath, file.buffer, {
+            contentType: file.mimetype,
+            upsert: false
+          });
+        
+        if (uploadError) {
+          console.error('Storage upload error:', uploadError);
+          continue; // Skip this file but continue with others
+        }
+        
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from(bucket)
+          .getPublicUrl(filePath);
+        
+        uploadedFiles.push({
+          id: fileName,
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size,
+          publicUrl: urlData.publicUrl,
+          bucket: bucket,
+          path: filePath
+        });
+        
+      } catch (fileError) {
+        console.error('File processing error:', fileError);
+        continue;
+      }
+    }
+    
+    if (uploadedFiles.length === 0) {
+      return res.status(500).json({ error: 'All file uploads failed' });
     }
     
     res.json({ 

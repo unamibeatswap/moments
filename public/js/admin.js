@@ -828,6 +828,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mediaUrls.length > 0) {
                 data.media_urls = mediaUrls;
             }
+            
+            // Remove media_files from data since it's not a database field
+            delete data.media_files;
 
             Object.keys(data).forEach(key => {
                 if (data[key] === '') delete data[key];
@@ -873,6 +876,32 @@ document.addEventListener('DOMContentLoaded', () => {
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData);
             const isEdit = !!data.id;
+            
+            // Handle logo upload
+            const logoFile = formData.get('logo_file');
+            if (logoFile && logoFile.size > 0) {
+                try {
+                    const logoFormData = new FormData();
+                    logoFormData.append('media_files', logoFile);
+                    
+                    const uploadResponse = await apiFetch('/upload-media', {
+                        method: 'POST',
+                        body: logoFormData
+                    });
+                    
+                    const uploadResult = await uploadResponse.json();
+                    if (uploadResult.success && uploadResult.files.length > 0) {
+                        data.logo_url = uploadResult.files[0].publicUrl;
+                        showSuccess('Logo uploaded successfully');
+                    }
+                } catch (uploadError) {
+                    console.error('Logo upload failed:', uploadError);
+                    showError('Logo upload failed, but sponsor will be saved without logo');
+                }
+            }
+            
+            // Remove logo_file from data since it's handled separately
+            delete data.logo_file;
             
             try {
                 const url = isEdit ? `/sponsors/${data.id}` : '/sponsors';
