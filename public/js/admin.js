@@ -1,5 +1,5 @@
 // Direct API calls without Supabase library
-const API_BASE = '/admin';
+const API_BASE = 'https://moments-api-production.up.railway.app/admin';
 
 // Get auth token from localStorage
 function getAuthToken() {

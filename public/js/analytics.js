@@ -54,7 +54,7 @@ class UnamiAnalytics {
     if (this.events.length === 0) return;
 
     try {
-      await fetch('/public/analytics', {
+      await fetch('https://xvwzuhnbxuffpglkqaht.supabase.co/functions/v1/public-api/analytics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
