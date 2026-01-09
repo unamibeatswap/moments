@@ -310,6 +310,58 @@ serve(async (req) => {
         })
       }
       
+      // Auto-broadcast admin moments if not scheduled
+      if (!body.scheduled_at) {
+        try {
+          const { data: subscribers } = await supabase
+            .from('subscriptions')
+            .select('phone_number')
+            .eq('opted_in', true)
+          
+          if (subscribers && subscribers.length > 0) {
+            // Create broadcast record
+            const { data: broadcast } = await supabase
+              .from('broadcasts')
+              .insert({
+                moment_id: moment.id,
+                recipient_count: subscribers.length,
+                status: 'processing',
+                broadcast_started_at: new Date().toISOString()
+              })
+              .select()
+              .single()
+            
+            // Update moment to broadcasted
+            await supabase
+              .from('moments')
+              .update({ 
+                status: 'broadcasted',
+                broadcasted_at: new Date().toISOString()
+              })
+              .eq('id', moment.id)
+            
+            // Trigger broadcast webhook
+            const broadcastMsg = `📢 Unami Foundation Moments — ${moment.region}\n\n${moment.title}\n\n${moment.content}\n\n🌐 More: moments.unamifoundation.org`
+            
+            await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/broadcast-webhook`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                broadcast_id: broadcast.id,
+                message: broadcastMsg,
+                recipients: subscribers.map(s => s.phone_number),
+                moment_id: moment.id
+              })
+            })
+          }
+        } catch (broadcastError) {
+          console.error('Auto-broadcast failed:', broadcastError)
+        }
+      }
+      
       return new Response(JSON.stringify({ moment }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
@@ -658,7 +710,7 @@ serve(async (req) => {
       })
     }
 
-    // Moderation endpoint with real data
+    // Moderation endpoint with real data and MCP analysis
     if (path.includes('/moderation') && method === 'GET') {
       const filter = url.searchParams.get('filter') || 'all'
       
@@ -671,18 +723,78 @@ serve(async (req) => {
         .order('created_at', { ascending: false })
         .limit(50)
       
-      // Apply filters based on MCP analysis
-      if (filter === 'flagged') {
-        // Messages with advisories that have high confidence
-        query = query.not('advisories', 'is', null)
-      } else if (filter === 'high_risk') {
-        // This would need a more complex query in practice
-        query = query.not('advisories', 'is', null)
-      }
-      
       const { data: messages } = await query
       
-      return new Response(JSON.stringify({ flaggedMessages: messages || [] }), {
+      // Process messages to include MCP analysis
+      const processedMessages = (messages || []).map(msg => {
+        const advisory = msg.advisories?.[0]
+        
+        return {
+          ...msg,
+          mcp_analysis: advisory ? {
+            confidence: advisory.confidence || 0,
+            harm_signals: advisory.harm_signals || {},
+            spam_indicators: advisory.spam_indicators || {},
+            urgency_level: advisory.urgency_level || 'low',
+            escalation_suggested: advisory.escalation_suggested || false
+          } : null
+        }
+      })
+      
+      // Apply filters
+      let filteredMessages = processedMessages
+      if (filter === 'flagged') {
+        filteredMessages = processedMessages.filter(msg => msg.mcp_analysis && msg.mcp_analysis.confidence > 0.3)
+      } else if (filter === 'high_risk') {
+        filteredMessages = processedMessages.filter(msg => msg.mcp_analysis && msg.mcp_analysis.confidence > 0.7)
+      } else if (filter === 'escalated') {
+        filteredMessages = processedMessages.filter(msg => msg.mcp_analysis && msg.mcp_analysis.escalation_suggested)
+      }
+      
+      return new Response(JSON.stringify({ flaggedMessages: filteredMessages }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Public API endpoints for moments page
+    if (path.includes('/api/stats') && method === 'GET') {
+      const [momentsResult, subscribersResult, broadcastsResult] = await Promise.all([
+        supabase.from('moments').select('id', { count: 'exact', head: true }),
+        supabase.from('subscriptions').select('id').eq('opted_in', true).then(r => ({ count: r.data?.length || 0 })),
+        supabase.from('broadcasts').select('id', { count: 'exact', head: true })
+      ])
+      
+      return new Response(JSON.stringify({
+        totalMoments: momentsResult.count || 0,
+        activeSubscribers: subscribersResult.count || 0,
+        totalBroadcasts: broadcastsResult.count || 0
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+    
+    if (path.includes('/api/moments') && method === 'GET') {
+      const region = url.searchParams.get('region')
+      const category = url.searchParams.get('category')
+      const source = url.searchParams.get('source')
+      
+      let query = supabase
+        .from('moments')
+        .select(`
+          *,
+          sponsors(*)
+        `)
+        .eq('status', 'broadcasted')
+        .order('broadcasted_at', { ascending: false })
+        .limit(50)
+      
+      if (region) query = query.eq('region', region)
+      if (category) query = query.eq('category', category)
+      if (source) query = query.eq('content_source', source)
+      
+      const { data: moments } = await query
+      
+      return new Response(JSON.stringify({ moments: moments || [] }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
