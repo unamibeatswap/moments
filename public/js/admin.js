@@ -293,10 +293,18 @@ function displayMoments() {
                 <button class="btn" data-section="create" style="margin-top: 1rem;">✏️ Create First Moment</button>
             </div>
         `;
+        document.getElementById('moments-pagination').innerHTML = '';
         return;
     }
 
-    const html = filteredMoments.map(moment => {
+    // Pagination logic
+    const itemsPerPage = 10;
+    const totalPages = Math.ceil(filteredMoments.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const currentMoments = filteredMoments.slice(startIndex, endIndex);
+
+    const html = currentMoments.map(moment => {
         const mediaPreview = renderMediaPreview(moment.media_urls);
         const contentPreview = moment.content.length > 150 ? 
             `<div class="moment-content collapsed" data-full="${escapeHtml(moment.content)}">
@@ -330,6 +338,47 @@ function displayMoments() {
     }).join('');
     
     document.getElementById('moments-list').innerHTML = html;
+    
+    // Update pagination
+    updatePagination(totalPages);
+}
+
+function updatePagination(totalPages) {
+    const paginationEl = document.getElementById('moments-pagination');
+    if (totalPages <= 1) {
+        paginationEl.innerHTML = '';
+        return;
+    }
+    
+    let paginationHtml = '';
+    
+    // Previous button
+    if (currentPage > 1) {
+        paginationHtml += `<button class="page-btn" onclick="changePage(${currentPage - 1})">← Previous</button>`;
+    }
+    
+    // Page numbers
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === currentPage) {
+            paginationHtml += `<button class="page-btn active">${i}</button>`;
+        } else if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+            paginationHtml += `<button class="page-btn" onclick="changePage(${i})">${i}</button>`;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+            paginationHtml += `<span class="page-btn">...</span>`;
+        }
+    }
+    
+    // Next button
+    if (currentPage < totalPages) {
+        paginationHtml += `<button class="page-btn" onclick="changePage(${currentPage + 1})">Next →</button>`;
+    }
+    
+    paginationEl.innerHTML = paginationHtml;
+}
+
+function changePage(page) {
+    currentPage = page;
+    displayMoments();
 }
 
 function renderMediaPreview(mediaUrls) {
@@ -341,18 +390,20 @@ function renderMediaPreview(mediaUrls) {
     return `
         <div class="moment-media">
             ${mediaItems.map((url, index) => {
-                const ext = url.split('.').pop().toLowerCase();
+                if (!url || url.trim() === '') return '';
+                
+                const ext = url.split('.').pop()?.toLowerCase() || '';
                 if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
                     return `
                         <div class="media-preview" onclick="openMediaModal('${escapeHtml(url)}')">
-                            <img src="${escapeHtml(url)}" alt="Media">
+                            <img src="${escapeHtml(url)}" alt="Media" onerror="this.parentElement.innerHTML='<div class=\"media-icon\">🖼️</div>'">
                             ${hasMore && index === 2 ? `<div class="media-count">+${mediaUrls.length - 3}</div>` : ''}
                         </div>
                     `;
                 } else if (['mp4', 'webm', 'mov'].includes(ext)) {
                     return `
                         <div class="media-preview" onclick="openMediaModal('${escapeHtml(url)}')">
-                            <video><source src="${escapeHtml(url)}"></video>
+                            <video preload="metadata"><source src="${escapeHtml(url)}"></video>
                             <div class="media-icon">▶️</div>
                             ${hasMore && index === 2 ? `<div class="media-count">+${mediaUrls.length - 3}</div>` : ''}
                         </div>
@@ -372,7 +423,7 @@ function renderMediaPreview(mediaUrls) {
                         <div class="media-icon">📄</div>
                     </div>
                 `;
-            }).join('')}
+            }).filter(Boolean).join('')}
         </div>
     `;
 }
@@ -450,7 +501,10 @@ function deleteMoment(id) {
 async function broadcastMoment(momentId) {
     showConfirm('Broadcast this moment now?', async () => {
         const broadcastBtn = document.querySelector(`[data-action="broadcast"][data-id="${momentId}"]`);
-        if (broadcastBtn) setButtonLoading(broadcastBtn, true);
+        if (broadcastBtn) {
+            setButtonLoading(broadcastBtn, true);
+            broadcastBtn.textContent = 'Broadcasting...';
+        }
         
         try {
             const response = await apiFetch(`/moments/${momentId}/broadcast`, {
@@ -460,15 +514,20 @@ async function broadcastMoment(momentId) {
             const result = await response.json();
             if (response.ok) {
                 showSuccess('Moment broadcasted successfully!');
-                loadMoments(currentPage);
+                // Reload moments to update status
+                await loadMoments(currentPage);
                 loadAnalytics();
             } else {
                 showError(result.error || 'Failed to broadcast moment');
             }
         } catch (error) {
-            showError('Failed to broadcast moment');
+            console.error('Broadcast error:', error);
+            showError('Failed to broadcast moment - check connection');
         } finally {
-            if (broadcastBtn) setButtonLoading(broadcastBtn, false);
+            if (broadcastBtn) {
+                setButtonLoading(broadcastBtn, false);
+                broadcastBtn.textContent = '📡 Broadcast Now';
+            }
         }
     });
 }
@@ -604,7 +663,9 @@ async function loadCampaigns() {
         }
         
         if (data.campaigns && data.campaigns.length > 0) {
-            const html = data.campaigns.map(campaign => `
+            // Show only first 10 campaigns
+            const campaigns = data.campaigns.slice(0, 10);
+            const html = campaigns.map(campaign => `
                 <div class="moment-item">
                     <div class="moment-header">
                         <div class="moment-info">
@@ -626,6 +687,15 @@ async function loadCampaigns() {
                 </div>
             `).join('');
             document.getElementById('campaigns-list').innerHTML = html;
+            
+            // Add "Load More" if there are more than 10
+            if (data.campaigns.length > 10) {
+                document.getElementById('campaigns-list').innerHTML += `
+                    <div style="text-align: center; margin-top: 1rem;">
+                        <button class="btn btn-secondary" onclick="loadMoreCampaigns()">Load More (${data.campaigns.length - 10} remaining)</button>
+                    </div>
+                `;
+            }
         } else {
             document.getElementById('campaigns-list').innerHTML = `
                 <div class="empty-state">
@@ -1502,3 +1572,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// Load more campaigns function
+function loadMoreCampaigns() {
+    // This would typically load the next page of campaigns
+    // For now, just show a message
+    showSuccess('Load more functionality would fetch additional campaigns');
+}
