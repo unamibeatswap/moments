@@ -107,6 +107,12 @@ async function processMessage(message, value) {
       return;
     }
     
+    // Handle region selection (e.g., "KZN WC GP")
+    if (isRegionSelection(command)) {
+      await handleRegionSelection(fromNumber, command);
+      return;
+    }
+    
     // Handle casual chat attempts
     if (isCasualMessage(command)) {
       await handleCasualChat(fromNumber);
@@ -248,7 +254,7 @@ async function handleOptIn(phoneNumber) {
 This is where South Africans share local opportunities, events, and news from your region.
 
 📱 Submit your moments by messaging here
-🌐 See all community posts: moments.unamifoundation.org
+🌐 See all community posts: moments.unamifoundation.org/moments
 📍 Choose regions: REGIONS
 ❓ Commands: HELP`;
     
@@ -295,12 +301,16 @@ function isCasualMessage(message) {
 async function handleHelp(phoneNumber) {
   const helpMessage = `📡 Community Signal Service Commands:
 
-📍 REGIONS - Choose your areas (KZN, WC, GP, EC, FS, LP, MP, NC, NW)
+🔄 START - Subscribe to community signals
 🛑 STOP - Unsubscribe from signals
-🔄 START - Resubscribe to signals
+❓ HELP - Show this help menu
+📍 REGIONS - Choose your areas
+
+🌍 Available Regions:
+KZN, WC, GP, EC, FS, LP, MP, NC, NW
 
 💬 Submit moments by messaging here
-🌐 Full community feed: moments.unamifoundation.org
+🌐 Full community feed: moments.unamifoundation.org/moments
 
 This is YOUR community sharing platform.`;
   
@@ -325,13 +335,70 @@ Reply with codes like: KZN WC GP`;
   await sendMessage(phoneNumber, regionsMessage);
 }
 
+function isRegionSelection(message) {
+  const validRegions = ['kzn', 'wc', 'gp', 'ec', 'fs', 'lp', 'mp', 'nc', 'nw'];
+  const words = message.split(/\s+/);
+  
+  // Check if message contains only valid region codes
+  return words.length > 0 && words.every(word => validRegions.includes(word.toLowerCase()));
+}
+
+async function handleRegionSelection(phoneNumber, regionString) {
+  try {
+    const regionCodes = regionString.toUpperCase().split(/\s+/);
+    const regionMap = {
+      'KZN': 'KwaZulu-Natal',
+      'WC': 'Western Cape', 
+      'GP': 'Gauteng',
+      'EC': 'Eastern Cape',
+      'FS': 'Free State',
+      'LP': 'Limpopo',
+      'MP': 'Mpumalanga',
+      'NC': 'Northern Cape',
+      'NW': 'North West'
+    };
+    
+    const selectedRegions = regionCodes.map(code => regionMap[code]).filter(Boolean);
+    
+    if (selectedRegions.length === 0) {
+      await sendMessage(phoneNumber, '❌ Invalid region codes. Reply REGIONS to see valid options.');
+      return;
+    }
+    
+    // Update user's region preferences
+    await supabase
+      .from('subscriptions')
+      .upsert({
+        phone_number: phoneNumber,
+        regions: selectedRegions,
+        last_activity: new Date().toISOString(),
+        opted_in: true // Ensure they're opted in when selecting regions
+      });
+    
+    const confirmMessage = `✅ Regions updated!
+
+You'll now receive community signals from:
+${selectedRegions.map(region => `📍 ${region}`).join('\n')}
+
+💬 Submit moments by messaging here
+🌐 Browse all: moments.unamifoundation.org/moments`;
+    
+    await sendMessage(phoneNumber, confirmMessage);
+    
+    console.log(`User ${phoneNumber} updated regions to: ${selectedRegions.join(', ')}`);
+  } catch (error) {
+    console.error('Region selection error:', error);
+    await sendMessage(phoneNumber, '❌ Error updating regions. Please try again or contact support.');
+  }
+}
+
 async function handleCasualChat(phoneNumber) {
   const chatMessage = `👋 Hi! This is your community signal service.
 
 South Africans share local opportunities and events here.
 
 📱 Submit moments by messaging
-🌐 Browse all: moments.unamifoundation.org
+🌐 Browse all: moments.unamifoundation.org/moments
 📍 Commands: HELP, REGIONS, STOP`;
   
   await sendMessage(phoneNumber, chatMessage);
