@@ -33,7 +33,7 @@ export async function adminLogin(req, res) {
     global.loginAttempts.set(clientIP, attempts);
 
     // Call Supabase admin-api function server-side
-    const response = await fetch('https://arqeiadudzwbmzdhqkit.supabase.co/functions/v1/admin-api', {
+    const response = await fetch(`${process.env.SUPABASE_URL}/functions/v1/admin-api`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -113,15 +113,26 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '')
-    const { data: session, error: sessionError } = await supabase
-      .from('admin_sessions')
-      .select('*, admin_users(*)')
-      .eq('token', token)
-      .gt('expires_at', new Date().toISOString())
-      .single()
+    
+    // Handle both session tokens and service role tokens
+    if (token.startsWith('session_')) {
+      const { data: session, error: sessionError } = await supabase
+        .from('admin_sessions')
+        .select('*, admin_users(*)')
+        .eq('token', token)
+        .gt('expires_at', new Date().toISOString())
+        .single()
 
-    if (sessionError || !session) {
-      return new Response(JSON.stringify({ error: 'Invalid or expired session' }), {
+      if (sessionError || !session) {
+        return new Response(JSON.stringify({ error: 'Invalid or expired session' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+    } else if (token === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) {
+      // Allow service role key for internal calls
+    } else {
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })

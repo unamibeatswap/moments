@@ -1,21 +1,41 @@
 import { supabase } from '../config/supabase.js';
 import * as Sentry from '@sentry/node';
 
-// Extract user from Supabase access token in Authorization header
+// Extract user from session token in Authorization header
 export async function getUserFromRequest(req) {
   try {
     const authHeader = req.get('authorization') || '';
     const token = authHeader.split(' ')[1];
     if (!token) return null;
 
+    // Check if it's a session token (starts with 'session_')
+    if (token.startsWith('session_')) {
+      const { data: session, error } = await supabase
+        .from('admin_sessions')
+        .select('*, admin_users(*)')
+        .eq('token', token)
+        .gt('expires_at', new Date().toISOString())
+        .single();
+
+      if (error || !session) {
+        console.warn('Session validation error:', error?.message || 'Invalid session');
+        return null;
+      }
+
+      return {
+        id: session.admin_users.id,
+        email: session.admin_users.email,
+        name: session.admin_users.name
+      };
+    }
+
+    // Fallback to Supabase auth token
     const { data, error } = await supabase.auth.getUser(token);
     if (error) {
       console.warn('Supabase getUser error', error.message || error);
       return null;
     }
-    // data may contain { user }
     const user = data?.user || null;
-    // Attach to Sentry context for observability
     if (user && process.env.SENTRY_DSN) {
       try { Sentry.setUser({ id: user.id, email: user.email }); } catch (e) {}
     }
@@ -51,16 +71,11 @@ export function requireRole(allowed = []) {
 
       if (error) console.warn('admin_roles lookup error', error.message || error);
 
-      const dbRole = data?.role;
-      const metadataRole = user.user_metadata?.role;
-      const role = dbRole || metadataRole || 'viewer';
-
-      if (allowed.length === 0 || allowed.includes(role) || (role === 'super_admin' && allowed.includes('superadmin'))) {
-        req.user_role = role;
+      // For session tokens, assume admin role
+      if (token.startsWith('session_')) {
+        req.user_role = 'superadmin';
         return next();
       }
-
-      return res.status(403).json({ error: 'Forbidden - insufficient role' });
     } catch (err) {
       console.error('requireRole error', err.message || err);
       return res.status(500).json({ error: 'Role verification failed' });
