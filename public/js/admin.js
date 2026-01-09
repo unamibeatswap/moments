@@ -280,29 +280,109 @@ function displayMoments() {
         return;
     }
 
-    const html = filteredMoments.map(moment => `
-        <div class="moment-item">
-            <div class="moment-header">
-                <div class="moment-info">
-                    <div class="moment-title">${moment.title}</div>
-                    <div class="moment-meta">
-                        ${moment.region} • ${moment.category} • ${new Date(moment.created_at).toLocaleDateString()}
-                        ${moment.is_sponsored ? ` • Sponsored by ${moment.sponsors?.display_name || 'Unknown'}` : ''}
+    const html = filteredMoments.map(moment => {
+        const mediaPreview = renderMediaPreview(moment.media_urls);
+        const contentPreview = moment.content.length > 150 ? 
+            `<div class="moment-content collapsed" data-full="${escapeHtml(moment.content)}">
+                ${escapeHtml(moment.content.substring(0, 150))}
+                <button class="expand-btn" onclick="toggleMomentContent(this)">...read more</button>
+            </div>` :
+            `<div class="moment-content">${escapeHtml(moment.content)}</div>`;
+        
+        return `
+            <div class="moment-item">
+                <div class="moment-header">
+                    <div class="moment-info">
+                        <div class="moment-title">${escapeHtml(moment.title)}</div>
+                        <div class="moment-meta">
+                            ${moment.region} • ${moment.category} • ${new Date(moment.created_at).toLocaleDateString()}
+                            ${moment.is_sponsored ? ` • Sponsored by ${moment.sponsors?.display_name || 'Unknown'}` : ''}
+                        </div>
+                    </div>
+                    <div class="moment-actions">
+                        <span class="status-badge status-${moment.status}">${moment.status}</span>
+                        ${moment.status === 'draft' ? `<button class="btn btn-sm btn-success" data-action="broadcast" data-id="${moment.id}">📡 Broadcast Now</button>` : ''}
+                        ${moment.status !== 'broadcasted' ? `<button class="btn btn-sm" data-action="edit" data-id="${moment.id}">✏️ Edit</button>` : ''}
+                        <button class="btn btn-sm btn-danger" data-action="delete" data-id="${moment.id}">🗑️ Delete</button>
                     </div>
                 </div>
-                <div class="moment-actions">
-                    <span class="status-badge status-${moment.status}">${moment.status}</span>
-                    ${moment.status === 'draft' ? `<button class="btn btn-sm btn-success" data-action="broadcast" data-id="${moment.id}">📡 Broadcast Now</button>` : ''}
-                    ${moment.status !== 'broadcasted' ? `<button class="btn btn-sm" data-action="edit" data-id="${moment.id}">✏️ Edit</button>` : ''}
-                    <button class="btn btn-sm btn-danger" data-action="delete" data-id="${moment.id}">🗑️ Delete</button>
-                </div>
+                ${contentPreview}
+                ${mediaPreview}
+                ${moment.scheduled_at ? `<div style="font-size: 0.75rem; color: #2563eb; margin-top: 0.5rem;">Scheduled: ${new Date(moment.scheduled_at).toLocaleString()}</div>` : ''}
             </div>
-            <div class="moment-content">${moment.content.substring(0, 200)}${moment.content.length > 200 ? '...' : ''}</div>
-            ${moment.scheduled_at ? `<div style="font-size: 0.75rem; color: #2563eb; margin-top: 0.5rem;">Scheduled: ${new Date(moment.scheduled_at).toLocaleString()}</div>` : ''}
-        </div>
-    `).join('');
+        `;
+    }).join('');
     
     document.getElementById('moments-list').innerHTML = html;
+}
+
+function renderMediaPreview(mediaUrls) {
+    if (!mediaUrls || mediaUrls.length === 0) return '';
+    
+    const mediaItems = mediaUrls.slice(0, 3);
+    const hasMore = mediaUrls.length > 3;
+    
+    return `
+        <div class="moment-media">
+            ${mediaItems.map((url, index) => {
+                const ext = url.split('.').pop().toLowerCase();
+                if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+                    return `
+                        <div class="media-preview" onclick="openMediaModal('${escapeHtml(url)}')">
+                            <img src="${escapeHtml(url)}" alt="Media">
+                            ${hasMore && index === 2 ? `<div class="media-count">+${mediaUrls.length - 3}</div>` : ''}
+                        </div>
+                    `;
+                } else if (['mp4', 'webm', 'mov'].includes(ext)) {
+                    return `
+                        <div class="media-preview" onclick="openMediaModal('${escapeHtml(url)}')">
+                            <video><source src="${escapeHtml(url)}"></video>
+                            <div class="media-icon">▶️</div>
+                            ${hasMore && index === 2 ? `<div class="media-count">+${mediaUrls.length - 3}</div>` : ''}
+                        </div>
+                    `;
+                } else if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext)) {
+                    return `
+                        <div class="media-preview">
+                            <div class="media-icon">🎧</div>
+                            <audio controls style="position: absolute; bottom: 0; width: 100%; height: 30px;">
+                                <source src="${escapeHtml(url)}">
+                            </audio>
+                        </div>
+                    `;
+                }
+                return `
+                    <div class="media-preview" onclick="window.open('${escapeHtml(url)}', '_blank')">
+                        <div class="media-icon">📄</div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+function toggleMomentContent(button) {
+    const contentDiv = button.parentElement;
+    const isCollapsed = contentDiv.classList.contains('collapsed');
+    
+    if (isCollapsed) {
+        contentDiv.innerHTML = escapeHtml(contentDiv.dataset.full);
+        contentDiv.classList.remove('collapsed');
+    } else {
+        const shortContent = contentDiv.dataset.full.substring(0, 150);
+        contentDiv.innerHTML = escapeHtml(shortContent) + '<button class="expand-btn" onclick="toggleMomentContent(this)">...read more</button>';
+        contentDiv.classList.add('collapsed');
+    }
+}
+
+function openMediaModal(url) {
+    window.open(url, '_blank');
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // Edit moment
@@ -430,46 +510,79 @@ async function loadSponsors() {
 // Load pipeline status (MCP + n8n)
 async function loadPipelineStatus() {
     try {
-        const [n8nResponse, mcpResponse] = await Promise.all([
-            apiFetch('/n8n-status').catch(() => ({ json: () => ({ status: 'error' }) })),
-            apiFetch('/mcp-stats').catch(() => ({ json: () => ({ total_analyzed: 0 }) }))
+        const pipelineStatusEl = document.getElementById('pipeline-status');
+        if (!pipelineStatusEl) return;
+        
+        // Show loading state
+        pipelineStatusEl.innerHTML = '<div class="loading">Checking pipeline status...</div>';
+        
+        const [healthResponse, mcpResponse, broadcastResponse] = await Promise.all([
+            fetch('/health').catch(() => ({ ok: false, status: 'error' })),
+            apiFetch('/mcp-stats').catch(() => ({ json: () => ({ total_analyzed: 0, status: 'unknown' }) })),
+            apiFetch('/broadcasts?limit=1').catch(() => ({ json: () => ({ broadcasts: [] }) }))
         ]);
         
-        const n8nData = await n8nResponse.json();
-        const mcpData = await mcpResponse.json();
+        const mcpData = await mcpResponse.json().catch(() => ({ total_analyzed: 0, status: 'unknown' }));
+        const broadcastData = await broadcastResponse.json().catch(() => ({ broadcasts: [] }));
         
-        const pipelineStatusEl = document.getElementById('pipeline-status');
-        if (pipelineStatusEl) {
-            pipelineStatusEl.innerHTML = `
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div style="padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.5rem;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                            <div style="width: 8px; height: 8px; border-radius: 50%; background: ${n8nData.status === 'connected' ? '#16a34a' : '#dc2626'};"></div>
-                            <strong>n8n Workflows</strong>
-                        </div>
-                        <div style="font-size: 0.875rem; color: #6b7280;">
-                            Status: ${n8nData.status}<br>
-                            Active: ${n8nData.total_workflows || 0} workflows
-                        </div>
+        const systemHealth = healthResponse.ok ? 'connected' : 'error';
+        const mcpStatus = mcpData.total_analyzed > 0 ? 'active' : 'inactive';
+        const lastBroadcast = broadcastData.broadcasts?.[0];
+        
+        pipelineStatusEl.innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                <div style="padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <div style="width: 8px; height: 8px; border-radius: 50%; background: ${systemHealth === 'connected' ? '#16a34a' : '#dc2626'};"></div>
+                        <strong>System Health</strong>
                     </div>
-                    <div style="padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.5rem;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                            <div style="width: 8px; height: 8px; border-radius: 50%; background: ${mcpData.total_analyzed > 0 ? '#16a34a' : '#f59e0b'};"></div>
-                            <strong>MCP Analysis</strong>
-                        </div>
-                        <div style="font-size: 0.875rem; color: #6b7280;">
-                            Analyzed: ${mcpData.total_analyzed || 0}<br>
-                            Escalations: ${mcpData.escalations || 0}
-                        </div>
+                    <div style="font-size: 0.875rem; color: #6b7280;">
+                        API: ${systemHealth}<br>
+                        WhatsApp: ${systemHealth === 'connected' ? 'Connected' : 'Disconnected'}
                     </div>
                 </div>
-            `;
-        }
+                <div style="padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <div style="width: 8px; height: 8px; border-radius: 50%; background: ${mcpStatus === 'active' ? '#16a34a' : '#f59e0b'};"></div>
+                        <strong>MCP Analysis</strong>
+                    </div>
+                    <div style="font-size: 0.875rem; color: #6b7280;">
+                        Status: ${mcpStatus}<br>
+                        Analyzed: ${mcpData.total_analyzed || 0} messages
+                    </div>
+                </div>
+                <div style="padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <div style="width: 8px; height: 8px; border-radius: 50%; background: ${lastBroadcast ? '#16a34a' : '#6b7280'};"></div>
+                        <strong>Broadcast System</strong>
+                    </div>
+                    <div style="font-size: 0.875rem; color: #6b7280;">
+                        Status: ${lastBroadcast ? 'Active' : 'No broadcasts'}<br>
+                        Last: ${lastBroadcast ? new Date(lastBroadcast.broadcast_started_at).toLocaleDateString() : 'Never'}
+                    </div>
+                </div>
+                <div style="padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <div style="width: 8px; height: 8px; border-radius: 50%; background: #2563eb;"></div>
+                        <strong>Commands Available</strong>
+                    </div>
+                    <div style="font-size: 0.875rem; color: #6b7280;">
+                        START, STOP, HELP<br>
+                        REGIONS, INTERESTS
+                    </div>
+                </div>
+            </div>
+        `;
     } catch (error) {
         console.error('Pipeline status load error:', error);
         const pipelineStatusEl = document.getElementById('pipeline-status');
         if (pipelineStatusEl) {
-            pipelineStatusEl.innerHTML = '<div class="error">Failed to load pipeline status</div>';
+            pipelineStatusEl.innerHTML = `
+                <div class="error">
+                    Failed to load pipeline status<br>
+                    <small>Check system connectivity and try again</small>
+                </div>
+            `;
         }
     }
 }
@@ -700,6 +813,10 @@ async function loadSubscribers() {
                     <div class="stat-number">${data.stats.inactive || 0}</div>
                     <div class="stat-label">Opted Out</div>
                 </div>
+                <div class="stat-card">
+                    <div class="stat-number">${data.stats.commands_used || 0}</div>
+                    <div class="stat-label">Commands Used</div>
+                </div>
             `;
         }
         
@@ -708,8 +825,9 @@ async function loadSubscribers() {
         
         if (data.subscribers && data.subscribers.length > 0) {
             const html = data.subscribers.map(sub => {
-                const regions = Array.isArray(sub.regions) ? sub.regions.join(', ') : 'All';
-                const categories = Array.isArray(sub.categories) ? sub.categories.join(', ') : 'All';
+                const regions = Array.isArray(sub.regions) ? sub.regions.join(', ') : (sub.regions || 'National');
+                const categories = Array.isArray(sub.categories) ? sub.categories.slice(0, 3).join(', ') + (sub.categories.length > 3 ? '...' : '') : 'All';
+                const language = sub.language_preference || 'English';
                 
                 return `
                     <div class="moment-item">
@@ -728,8 +846,10 @@ async function loadSubscribers() {
                             </div>
                         </div>
                         <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.5rem;">
-                            <strong>Preferences:</strong> ${sub.language_preference || 'eng'} • 
-                            Regions: ${regions} • Categories: ${categories}
+                            <strong>Language:</strong> ${language} • 
+                            <strong>Regions:</strong> ${regions}<br>
+                            <strong>Categories:</strong> ${categories}
+                            ${sub.consent_method ? `<br><strong>Consent:</strong> ${sub.consent_method} (${new Date(sub.consent_timestamp).toLocaleDateString()})` : ''}
                         </div>
                     </div>
                 `;
@@ -741,6 +861,14 @@ async function loadSubscribers() {
                     <div class="empty-state-icon">📱</div>
                     <div>No subscribers found</div>
                     <p>Users will appear here when they send START to your WhatsApp number.</p>
+                    <div style="margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 0.5rem; text-align: left;">
+                        <strong>Available Commands:</strong><br>
+                        • <code>START</code> or <code>JOIN</code> - Subscribe to updates<br>
+                        • <code>STOP</code> or <code>UNSUBSCRIBE</code> - Unsubscribe<br>
+                        • <code>HELP</code> - Get help information<br>
+                        • <code>REGIONS</code> - Manage region preferences<br>
+                        • <code>INTERESTS</code> - Manage category preferences
+                    </div>
                 </div>
             `;
         }
