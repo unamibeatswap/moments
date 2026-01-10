@@ -917,7 +917,56 @@ serve(async (req) => {
       })
     }
 
-    // Broadcast campaign endpoint - convert to moment and broadcast
+    // Process scheduled moments endpoint
+    if (path.includes('/process-scheduled') && method === 'POST') {
+      const { data: scheduledMoments } = await supabase
+        .from('moments')
+        .select('*')
+        .eq('status', 'scheduled')
+        .lte('scheduled_at', new Date().toISOString())
+        .limit(10)
+      
+      let processedCount = 0
+      const results = []
+      
+      for (const moment of scheduledMoments || []) {
+        try {
+          // Update to draft status (ready for broadcast)
+          const { error: updateError } = await supabase
+            .from('moments')
+            .update({ 
+              status: 'draft',
+              scheduled_at: null
+            })
+            .eq('id', moment.id)
+          
+          if (!updateError) {
+            processedCount++
+            results.push({
+              id: moment.id,
+              title: moment.title,
+              status: 'processed'
+            })
+          }
+        } catch (error) {
+          results.push({
+            id: moment.id,
+            title: moment.title,
+            status: 'error',
+            error: error.message
+          })
+        }
+      }
+      
+      return new Response(JSON.stringify({
+        success: true,
+        processed_count: processedCount,
+        total_scheduled: scheduledMoments?.length || 0,
+        results: results
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
     if (path.includes('/campaigns/') && path.includes('/broadcast') && method === 'POST') {
       const campaignId = path.split('/campaigns/')[1].split('/broadcast')[0]
       
