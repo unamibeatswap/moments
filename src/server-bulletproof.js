@@ -220,7 +220,7 @@ async function processMessage(message, value) {
             content: content,
             region: 'National',
             category: 'Events',
-            content_source: 'community',
+            content_source: 'whatsapp',
             status: 'draft',
             created_by: fromNumber,
             media_urls: mediaId ? [`whatsapp_media_${mediaId}`] : []
