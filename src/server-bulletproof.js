@@ -140,13 +140,13 @@ async function processMessage(message, value) {
 
     console.log(`Processing message from ${fromNumber}, type: ${messageType}`);
 
-    // Extract content based on message type
+    // Extract content based on message type and decode HTML entities
     switch (messageType) {
       case 'text':
-        content = message.text.body;
+        content = message.text.body.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
         break;
       case 'image':
-        content = message.image.caption || '[Image]';
+        content = (message.image.caption || '[Image]').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
         mediaId = message.image.id;
         break;
       case 'audio':
@@ -154,7 +154,7 @@ async function processMessage(message, value) {
         mediaId = message.audio.id;
         break;
       case 'video':
-        content = message.video.caption || '[Video]';
+        content = (message.video.caption || '[Video]').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
         mediaId = message.video.id;
         break;
       case 'document':
