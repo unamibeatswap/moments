@@ -209,15 +209,33 @@ async function processMessage(message, value) {
       return;
     }
 
-    // Auto-create moment from meaningful messages
-    if (content && content.length > 10 && !isCommand(content) && !isCasualMessage(command) && content !== '[Image]' && content !== '[Audio message]' && content !== '[Video]' && content !== '[Document]') {
+    // Auto-create moment from meaningful messages (including media with captions)
+    if (content && content.length > 5 && !isCommand(content) && !isCasualMessage(command)) {
       console.log('Creating moment from message');
       try {
+        // For media without captions, create descriptive content
+        let momentContent = content;
+        let momentTitle = generateTitle(content);
+        
+        if (content === '[Image]' && mediaId) {
+          momentContent = 'Community shared an image';
+          momentTitle = 'Community Image Share';
+        } else if (content === '[Video]' && mediaId) {
+          momentContent = 'Community shared a video';
+          momentTitle = 'Community Video Share';
+        } else if (content === '[Audio message]' && mediaId) {
+          momentContent = 'Community shared an audio message';
+          momentTitle = 'Community Audio Share';
+        } else if (content === '[Document]' && mediaId) {
+          momentContent = 'Community shared a document';
+          momentTitle = 'Community Document Share';
+        }
+        
         const { data: moment, error: momentError } = await supabase
           .from('moments')
           .insert({
-            title: generateTitle(content),
-            content: content,
+            title: momentTitle,
+            content: momentContent,
             region: 'National',
             category: 'Events',
             content_source: 'whatsapp',
