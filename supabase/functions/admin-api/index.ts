@@ -917,7 +917,70 @@ serve(async (req) => {
       })
     }
 
-    // Media upload endpoint
+    // Message approval endpoint - convert message to moment
+    if (path.includes('/messages/') && path.includes('/approve') && method === 'POST') {
+      const messageId = path.split('/messages/')[1].split('/approve')[0]
+      
+      // Get message
+      const { data: message } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('id', messageId)
+        .single()
+      
+      if (!message) {
+        return new Response(JSON.stringify({ error: 'Message not found' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+      
+      // Create moment from message
+      const title = message.content && message.content.length > 50 
+        ? message.content.substring(0, 50) + '...'
+        : message.content || 'Community Share'
+      
+      const content = message.content || 
+        (message.message_type === 'image' ? 'Community member shared an image' :
+         message.message_type === 'video' ? 'Community member shared a video' :
+         message.message_type === 'audio' ? 'Community member shared an audio message' :
+         'Community member shared content')
+      
+      const { data: moment, error: momentError } = await supabase
+        .from('moments')
+        .insert({
+          title: title,
+          content: content,
+          region: 'GP',
+          category: 'Events',
+          content_source: 'whatsapp',
+          status: 'draft',
+          created_by: message.from_number
+        })
+        .select()
+        .single()
+      
+      if (momentError) {
+        return new Response(JSON.stringify({ error: momentError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+      
+      // Mark message as processed
+      await supabase
+        .from('messages')
+        .update({ processed: true })
+        .eq('id', messageId)
+      
+      return new Response(JSON.stringify({ 
+        success: true,
+        moment: moment,
+        message: 'Message approved and converted to moment'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
     if (path.includes('/upload-media') && method === 'POST') {
       try {
         // Real Supabase Storage integration
