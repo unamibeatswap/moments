@@ -233,12 +233,11 @@ async function processMessage(message, value) {
       return;
     }
 
-    // Auto-create moment from ALL non-command messages (including media)
-    // BUT let soft moderation system handle the approval process
+    // Accept ALL non-command messages as potential moments
     if (!isCommand(content) && !isCasualMessage(command)) {
       console.log('Message will be processed by soft moderation system');
-      // The soft moderation system will automatically create moments for approved messages
-      // based on MCP analysis confidence scores
+      // Soft moderation will handle: text, images, videos, audio, documents
+      // All content types are valuable for community sharing
     }
 
     function isCommand(text) {
