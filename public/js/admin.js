@@ -1115,11 +1115,20 @@ function deleteSponsor(id) {
 function approveMessage(id) {
     showConfirm('Approve this message for publication?', async () => {
         try {
-            // For now, just mark as processed - could create moment from approved message
-            showSuccess('Message approved');
-            loadModeration();
+            const response = await apiFetch(`/messages/${id}/approve`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                showSuccess(result.message || 'Message approved successfully');
+                loadModeration();
+            } else {
+                const error = await response.json();
+                showError(error.error || 'Failed to approve message');
+            }
         } catch (error) {
-            showError('Failed to approve message');
+            showError('Failed to approve message: ' + error.message);
         }
     });
 }
@@ -1127,11 +1136,20 @@ function approveMessage(id) {
 function flagMessage(id) {
     showConfirm('Flag this message as inappropriate?', async () => {
         try {
-            // For now, just show success - could add to blocked list
-            showSuccess('Message flagged');
-            loadModeration();
+            const response = await apiFetch(`/messages/${id}/flag`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                showSuccess(result.message || 'Message flagged successfully');
+                loadModeration();
+            } else {
+                const error = await response.json();
+                showError(error.error || 'Failed to flag message');
+            }
         } catch (error) {
-            showError('Failed to flag message');
+            showError('Failed to flag message: ' + error.message);
         }
     });
 }

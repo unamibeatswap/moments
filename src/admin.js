@@ -911,6 +911,100 @@ router.post('/admin-users', async (req, res) => {
   }
 });
 
+// Flag message as inappropriate
+router.post('/messages/:id/flag', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await getUserFromRequest(req);
+    
+    // Create a flag record
+    const { data: flag, error: flagError } = await supabase
+      .from('flags')
+      .insert({
+        message_id: id,
+        flag_type: 'inappropriate_content',
+        flagged_by: user?.id || 'admin',
+        reason: 'Flagged by admin for inappropriate content'
+      })
+      .select()
+      .single();
+    
+    if (flagError) {
+      return res.status(500).json({ error: 'Failed to flag message' });
+    }
+    
+    // Mark message as flagged
+    await supabase
+      .from('messages')
+      .update({ flagged: true, flagged_at: new Date().toISOString() })
+      .eq('id', id);
+    
+    res.json({ 
+      success: true, 
+      message: 'Message flagged successfully',
+      flag_id: flag.id 
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Approve message for publication
+router.post('/messages/:id/approve', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get the message
+    const { data: message, error: fetchError } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError || !message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+    
+    // Create a moment from the approved message
+    const title = message.content.length > 50 
+      ? message.content.substring(0, 50) + '...'
+      : message.content;
+    
+    const { data: moment, error: momentError } = await supabase
+      .from('moments')
+      .insert({
+        title: title,
+        content: message.content,
+        region: 'GP', // Default region, could be enhanced
+        category: 'Community', // Default category
+        content_source: 'community',
+        status: 'draft',
+        created_by: message.from_number,
+        media_urls: message.media_urls || []
+      })
+      .select()
+      .single();
+    
+    if (momentError) {
+      return res.status(500).json({ error: 'Failed to create moment from message' });
+    }
+    
+    // Mark message as processed
+    await supabase
+      .from('messages')
+      .update({ processed: true, approved_at: new Date().toISOString() })
+      .eq('id', id);
+    
+    res.json({ 
+      success: true, 
+      message: 'Message approved and converted to moment',
+      moment_id: moment.id 
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Comment management endpoints
 router.post('/comments/:id/approve', async (req, res) => {
   try {
