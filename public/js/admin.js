@@ -871,6 +871,8 @@ async function loadSubscribers() {
         const response = await apiFetch(`/subscribers?filter=${filter}`);
         const data = await response.json();
         
+        console.log('Subscribers data:', data); // Debug log
+        
         // Update stats
         const statsEl = document.getElementById('subscriber-stats');
         if (statsEl && data.stats) {
@@ -950,7 +952,13 @@ async function loadSubscribers() {
         console.error('Subscribers load error:', error);
         const subscribersList = document.getElementById('subscribers-list');
         if (subscribersList) {
-            subscribersList.innerHTML = '<div class="error">Failed to load subscribers</div>';
+            subscribersList.innerHTML = '<div class="error">Failed to load subscribers: ' + error.message + '</div>';
+        }
+        
+        // Also update stats with error state
+        const statsEl = document.getElementById('subscriber-stats');
+        if (statsEl) {
+            statsEl.innerHTML = '<div class="error">Failed to load subscriber stats</div>';
         }
     }
 }
@@ -1480,57 +1488,75 @@ document.addEventListener('DOMContentLoaded', () => {
         sponsorForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const submitBtn = document.getElementById('sponsor-submit-btn');
+            const messageEl = document.getElementById('sponsor-message');
+            
+            // Clear previous messages
+            messageEl.innerHTML = '';
             setButtonLoading(submitBtn, true);
             
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData);
-            const isEdit = !!data.id;
-            
-            // Handle logo upload with preview
-            const logoFile = formData.get('logo_file');
-            if (logoFile && logoFile.size > 0) {
-                try {
-                    // Show upload progress
-                    const logoPreview = document.getElementById('sponsor-logo-preview');
-                    const logoProgressBar = document.getElementById('sponsor-upload-progress-bar');
-                    const logoProgress = document.getElementById('sponsor-upload-progress');
-                    
-                    if (logoProgress) logoProgress.style.display = 'block';
-                    if (logoProgressBar) logoProgressBar.style.width = '10%';
-                    
-                    const logoFormData = new FormData();
-                    logoFormData.append('media_files', logoFile);
-                    
-                    const uploadResponse = await apiFetch('/upload-media', {
-                        method: 'POST',
-                        body: logoFormData
-                    });
-                    
-                    if (logoProgressBar) logoProgressBar.style.width = '90%';
-                    
-                    const uploadResult = await uploadResponse.json();
-                    if (uploadResult.success && uploadResult.files.length > 0) {
-                        data.logo_url = uploadResult.files[0].publicUrl;
-                        if (logoProgressBar) logoProgressBar.style.width = '100%';
-                        showSuccess('Logo uploaded successfully');
-                    }
-                    
-                    // Hide progress after delay
-                    setTimeout(() => {
-                        if (logoProgress) logoProgress.style.display = 'none';
-                    }, 1000);
-                } catch (uploadError) {
-                    console.error('Logo upload failed:', uploadError);
-                    showError('Logo upload failed, but sponsor will be saved without logo');
-                    const logoProgress = document.getElementById('sponsor-upload-progress');
-                    if (logoProgress) logoProgress.style.display = 'none';
-                }
-            }
-            
-            // Remove logo_file from data since it's handled separately
-            delete data.logo_file;
-            
             try {
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData);
+                const isEdit = !!data.id;
+                
+                console.log('Submitting sponsor data:', data); // Debug log
+                
+                // Validate required fields
+                if (!data.name || !data.display_name) {
+                    throw new Error('Name and display name are required');
+                }
+                
+                // Handle logo upload with preview
+                const logoFile = formData.get('logo_file');
+                if (logoFile && logoFile.size > 0) {
+                    try {
+                        // Show upload progress
+                        const logoPreview = document.getElementById('sponsor-logo-preview');
+                        const logoProgressBar = document.getElementById('sponsor-upload-progress-bar');
+                        const logoProgress = document.getElementById('sponsor-upload-progress');
+                        
+                        if (logoProgress) logoProgress.style.display = 'block';
+                        if (logoProgressBar) logoProgressBar.style.width = '10%';
+                        
+                        const logoFormData = new FormData();
+                        logoFormData.append('media_files', logoFile);
+                        
+                        const uploadResponse = await apiFetch('/upload-media', {
+                            method: 'POST',
+                            body: logoFormData
+                        });
+                        
+                        if (logoProgressBar) logoProgressBar.style.width = '90%';
+                        
+                        const uploadResult = await uploadResponse.json();
+                        if (uploadResult.success && uploadResult.files.length > 0) {
+                            data.logo_url = uploadResult.files[0].publicUrl;
+                            if (logoProgressBar) logoProgressBar.style.width = '100%';
+                            showSuccess('Logo uploaded successfully');
+                        }
+                        
+                        // Hide progress after delay
+                        setTimeout(() => {
+                            if (logoProgress) logoProgress.style.display = 'none';
+                        }, 1000);
+                    } catch (uploadError) {
+                        console.error('Logo upload failed:', uploadError);
+                        messageEl.innerHTML = '<div class="error">Logo upload failed: ' + uploadError.message + '</div>';
+                        const logoProgress = document.getElementById('sponsor-upload-progress');
+                        if (logoProgress) logoProgress.style.display = 'none';
+                    }
+                }
+                
+                // Remove logo_file from data since it's handled separately
+                delete data.logo_file;
+                
+                // Remove empty fields
+                Object.keys(data).forEach(key => {
+                    if (data[key] === '') delete data[key];
+                });
+                
+                console.log('Final sponsor data to submit:', data); // Debug log
+                
                 const url = isEdit ? `/sponsors/${data.id}` : '/sponsors';
                 const method = isEdit ? 'PUT' : 'POST';
                 
@@ -1541,15 +1567,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 
                 const result = await response.json();
+                console.log('Sponsor submission result:', result); // Debug log
+                
                 if (response.ok) {
                     showSuccess(`Sponsor ${isEdit ? 'updated' : 'created'} successfully!`);
                     closeSponsorModal();
                     loadSponsors();
                 } else {
-                    document.getElementById('sponsor-message').innerHTML = `<div class="error">${result.error}</div>`;
+                    // Show specific error message
+                    const errorMsg = result.error || `Failed to ${isEdit ? 'update' : 'create'} sponsor`;
+                    messageEl.innerHTML = `<div class="error">${errorMsg}</div>`;
+                    
+                    // If it's a unique constraint error, provide helpful message
+                    if (errorMsg.includes('duplicate key') || errorMsg.includes('unique constraint')) {
+                        messageEl.innerHTML = '<div class="error">A sponsor with this name already exists. Please use a different name.</div>';
+                    }
                 }
             } catch (error) {
-                document.getElementById('sponsor-message').innerHTML = '<div class="error">Failed to save sponsor</div>';
+                console.error('Sponsor form error:', error);
+                messageEl.innerHTML = `<div class="error">Error: ${error.message}</div>`;
             } finally {
                 setButtonLoading(submitBtn, false);
             }
