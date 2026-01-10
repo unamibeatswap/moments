@@ -262,39 +262,74 @@ router.post('/sponsors', async (req, res) => {
   }
 });
 
-// Get broadcast analytics
+// Get broadcast analytics - use intent system metrics
 router.get('/analytics', async (req, res) => {
   try {
+    // Get moments data
     const { data: moments } = await supabase
       .from('moments')
-      .select('status, content_source')
+      .select('status, content_source, created_at')
       .not('status', 'eq', 'draft');
 
-    const { data: broadcasts } = await supabase
-      .from('broadcasts')
-      .select('recipient_count, success_count, failure_count');
+    // Get intent-based broadcast data (current system)
+    const { data: intents } = await supabase
+      .from('moment_intents')
+      .select('channel, status, created_at, payload')
+      .eq('channel', 'whatsapp');
 
+    // Get subscriber data
     const { data: subscribers } = await supabase
       .from('subscriptions')
-      .select('opted_in');
+      .select('opted_in, last_activity');
 
+    // Calculate moment stats
     const totalMoments = moments?.length || 0;
     const communityMoments = moments?.filter(m => m.content_source === 'community').length || 0;
     const adminMoments = moments?.filter(m => m.content_source === 'admin').length || 0;
-    const totalBroadcasts = broadcasts?.length || 0;
-    const totalRecipients = broadcasts?.reduce((sum, b) => sum + (b.recipient_count || 0), 0) || 0;
-    const totalSuccess = broadcasts?.reduce((sum, b) => sum + (b.success_count || 0), 0) || 0;
+    const campaignMoments = moments?.filter(m => m.content_source === 'campaign').length || 0;
+    const broadcastedMoments = moments?.filter(m => m.status === 'broadcasted').length || 0;
+
+    // Calculate intent-based broadcast stats
+    const totalIntents = intents?.length || 0;
+    const sentIntents = intents?.filter(i => i.status === 'sent').length || 0;
+    const pendingIntents = intents?.filter(i => i.status === 'pending').length || 0;
+    const failedIntents = intents?.filter(i => i.status === 'failed').length || 0;
+
+    // Calculate subscriber stats
+    const totalSubscribers = subscribers?.length || 0;
     const activeSubscribers = subscribers?.filter(s => s.opted_in).length || 0;
+    const recentActivity = subscribers?.filter(s => 
+      s.last_activity && new Date(s.last_activity) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    ).length || 0;
+
+    // Calculate success rate
+    const successRate = totalIntents > 0 ? ((sentIntents / totalIntents) * 100).toFixed(1) : '0';
 
     res.json({
+      // Moment metrics
       totalMoments,
+      broadcastedMoments,
       communityMoments,
       adminMoments,
-      totalBroadcasts,
-      totalRecipients,
-      totalSuccess,
+      campaignMoments,
+      
+      // Broadcast metrics (intent-based)
+      totalBroadcasts: totalIntents,
+      successfulBroadcasts: sentIntents,
+      pendingBroadcasts: pendingIntents,
+      failedBroadcasts: failedIntents,
+      successRate,
+      
+      // Subscriber metrics
+      totalSubscribers,
       activeSubscribers,
-      successRate: totalRecipients > 0 ? (totalSuccess / totalRecipients * 100).toFixed(1) : 0
+      recentActivity,
+      
+      // System health
+      systemStatus: {
+        intentSystem: pendingIntents < 10 ? 'healthy' : 'backlog',
+        lastUpdated: new Date().toISOString()
+      }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

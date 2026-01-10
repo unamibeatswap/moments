@@ -75,7 +75,7 @@
     },
     {
       "parameters": {
-        "functionCode": "// Render message using intent.payload and subscriber data\nconst intent = $json;\nconst subscribers = $items(\"Fetch Subscribers\");\nconst results = [];\n\n// Get moment details to check region\nconst momentRegion = intent.payload?.region || 'National';\n\nfor (const s of subscribers) {\n  const phone = s.json.phone_number;\n  const name = s.json.name || '';\n  const subscriberRegions = s.json.regions || [];\n  \n  // Filter by region if not National\n  if (momentRegion !== 'National' && !subscriberRegions.includes(momentRegion)) {\n    continue;\n  }\n  \n  const template = intent.template_id || null;\n  const payload = intent.payload || {};\n  \n  // Use proper WhatsApp message format\n  const messageText = `📢 Unami Foundation Moments — ${momentRegion}\n\n${payload.title}\n\n${payload.summary || payload.full_text}\n\n🌐 More: ${payload.link}`;\n  \n  results.push({ \n    json: { \n      intent_id: intent.id, \n      subscriber_phone: phone, \n      subscriber_name: name, \n      template, \n      messageText, \n      payload \n    } \n  });\n}\nreturn results;"
+        "functionCode": "// Enhanced message rendering with recipient tracking\nconst intent = $json;\nconst subscribers = $items(\"Fetch Subscribers\");\nconst results = [];\n\n// Get moment details from intent payload\nconst payload = intent.payload || {};\nconst momentRegion = payload.region || 'National';\nlet recipientCount = 0;\n\nfor (const s of subscribers) {\n  const phone = s.json.phone_number;\n  const name = s.json.name || '';\n  const subscriberRegions = s.json.regions || [];\n  \n  // Filter by region if not National\n  if (momentRegion !== 'National' && !subscriberRegions.includes(momentRegion)) {\n    continue;\n  }\n  \n  recipientCount++;\n  const template = intent.template_id || null;\n  \n  // Enhanced WhatsApp message format\n  const messageText = `📢 Unami Foundation Moments — ${momentRegion}\n\n${payload.title}\n\n${payload.summary || payload.full_text}\n\n🌐 More: ${payload.link}\n\n📱 Reply STOP to unsubscribe`;\n  \n  results.push({ \n    json: { \n      intent_id: intent.id, \n      subscriber_phone: phone, \n      subscriber_name: name, \n      template, \n      messageText, \n      payload,\n      recipientCount // Track total recipients for this intent\n    } \n  });\n}\n\n// If no recipients, still return intent info for tracking\nif (results.length === 0) {\n  results.push({\n    json: {\n      intent_id: intent.id,\n      subscriber_phone: null,\n      messageText: null,\n      recipientCount: 0,\n      noRecipients: true\n    }\n  });\n}\n\nreturn results;"
       },
       "name": "Render Messages",
       "type": "n8n-nodes-base.function",
@@ -128,7 +128,7 @@
             }
           ]
         },
-        "bodyParametersJson": "={ status: 'sent', attempts: ($json.attempts || 0) + 1, updated_at: new Date().toISOString() }"
+        "bodyParametersJson": "={{ JSON.stringify({ status: $json.noRecipients ? 'sent' : 'sent', attempts: ($json.attempts || 0) + 1, updated_at: new Date().toISOString(), payload: { ...($json.payload || {}), recipient_count: $json.recipientCount || 0, broadcast_completed_at: new Date().toISOString() } }) }}"
       },
       "name": "Mark Intent Sent",
       "type": "n8n-nodes-base.httpRequest",
