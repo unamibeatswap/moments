@@ -210,7 +210,7 @@ async function processMessage(message, value) {
     }
 
     // Auto-create moment from meaningful messages
-    if (content && content.length > 20 && !isCommand(content) && !isCasualMessage(command)) {
+    if (content && content.length > 10 && !isCommand(content) && !isCasualMessage(command) && content !== '[Image]' && content !== '[Audio message]' && content !== '[Video]' && content !== '[Document]') {
       console.log('Creating moment from message');
       try {
         const { data: moment, error: momentError } = await supabase
