@@ -1,6 +1,6 @@
 import express from 'express';
 import { supabase } from '../config/supabase.js';
-import { requireRole } from './auth.js';
+import { requireRole, getUserFromRequest } from './auth.js';
 import { broadcastMoment, scheduleNextBroadcasts } from './broadcast.js';
 
 const router = express.Router();
@@ -834,18 +834,61 @@ router.delete('/roles/:id', requireRole(['superadmin']), async (req, res) => {
   }
 });
 
-// Upload media files
-router.post('/upload-media', async (req, res) => {
+// Get current user role
+router.get('/user-role', async (req, res) => {
   try {
-    // For now, return success without actual upload
-    // In production, this would upload to Supabase Storage
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Check admin_roles table for explicit role mapping
+    const { data: roleData, error: roleError } = await supabase
+      .from('admin_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+
+    if (roleError && roleError.code !== 'PGRST116') {
+      console.warn('Role lookup error:', roleError.message);
+    }
+
+    // Default role assignment
+    const role = roleData?.role || 'moderator';
+    
     res.json({ 
-      success: true, 
-      files: [],
-      message: 'Media upload not implemented yet'
+      role,
+      user_id: user.id,
+      email: user.email,
+      name: user.name
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('User role error:', error);
+    res.status(500).json({ error: 'Failed to get user role' });
+  }
+});
+
+// Admin logout endpoint
+router.post('/logout', async (req, res) => {
+  try {
+    const user = await getUserFromRequest(req);
+    if (user) {
+      // Invalidate session if using session tokens
+      const authHeader = req.get('authorization') || '';
+      const token = authHeader.split(' ')[1];
+      
+      if (token && token.startsWith('session_')) {
+        await supabase
+          .from('admin_sessions')
+          .update({ expires_at: new Date().toISOString() })
+          .eq('token', token);
+      }
+    }
+    
+    res.json({ success: true, message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.json({ success: true }); // Always return success for logout
   }
 });
 
@@ -948,6 +991,64 @@ router.delete('/campaigns/:id', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Get current user role
+router.get('/user-role', async (req, res) => {
+  try {
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Check admin_roles table for explicit role mapping
+    const { data: roleData, error: roleError } = await supabase
+      .from('admin_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+
+    if (roleError && roleError.code !== 'PGRST116') {
+      console.warn('Role lookup error:', roleError.message);
+    }
+
+    // Default role assignment
+    const role = roleData?.role || 'moderator';
+    
+    res.json({ 
+      role,
+      user_id: user.id,
+      email: user.email,
+      name: user.name
+    });
+  } catch (error) {
+    console.error('User role error:', error);
+    res.status(500).json({ error: 'Failed to get user role' });
+  }
+});
+
+// Admin logout endpoint
+router.post('/logout', async (req, res) => {
+  try {
+    const user = await getUserFromRequest(req);
+    if (user) {
+      // Invalidate session if using session tokens
+      const authHeader = req.get('authorization') || '';
+      const token = authHeader.split(' ')[1];
+      
+      if (token && token.startsWith('session_')) {
+        await supabase
+          .from('admin_sessions')
+          .update({ expires_at: new Date().toISOString() })
+          .eq('token', token);
+      }
+    }
+    
+    res.json({ success: true, message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.json({ success: true }); // Always return success for logout
   }
 });
 

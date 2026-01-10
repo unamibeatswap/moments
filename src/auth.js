@@ -61,6 +61,10 @@ export function requireRole(allowed = []) {
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
     req.user = user;
 
+    // Get token for session check
+    const authHeader = req.get('authorization') || '';
+    const token = authHeader.split(' ')[1];
+
     // Prefer explicit role mapping in `admin_roles` table
     try {
       const { data, error } = await supabase
@@ -72,10 +76,21 @@ export function requireRole(allowed = []) {
       if (error) console.warn('admin_roles lookup error', error.message || error);
 
       // For session tokens, assume admin role
-      if (token.startsWith('session_')) {
+      if (token && token.startsWith('session_')) {
         req.user_role = 'superadmin';
         return next();
       }
+
+      // Use role from database or default
+      const userRole = data?.role || 'moderator';
+      req.user_role = userRole;
+
+      // Check if user role is allowed
+      if (allowed.length > 0 && !allowed.includes(userRole)) {
+        return res.status(403).json({ error: 'Insufficient permissions' });
+      }
+
+      next();
     } catch (err) {
       console.error('requireRole error', err.message || err);
       return res.status(500).json({ error: 'Role verification failed' });

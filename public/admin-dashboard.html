@@ -252,7 +252,7 @@
                 <div class="admin-user-controls" id="auth-area">
                     <div class="admin-user-info">
                         <span id="user-email"></span>
-                        <span class="admin-user-role">Administrator</span>
+                        <span class="admin-user-role" id="user-role">Loading...</span>
                     </div>
                     <button id="sign-out" class="btn btn-sm">
                         <span class="icon icon-sign-out"></span>
@@ -1179,8 +1179,9 @@
                 }
                 
                 // Validate token format
+                let user;
                 try {
-                    const user = JSON.parse(userInfo);
+                    user = JSON.parse(userInfo);
                     console.log('User info parsed successfully:', user.email || user.name);
                 } catch (parseError) {
                     console.error('Invalid user info format, clearing auth');
@@ -1190,17 +1191,59 @@
                     return;
                 }
                 
-                const user = JSON.parse(userInfo);
-                
                 // Show user info and setup logout
                 const userEmailEl = document.getElementById('user-email');
+                const userRoleEl = document.getElementById('user-role');
                 const signOutEl = document.getElementById('sign-out');
                 
                 if (userEmailEl) userEmailEl.textContent = user.name || user.email;
+                
+                // Fetch user role from server
+                try {
+                    const roleResponse = await fetch('/admin/user-role', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    
+                    if (roleResponse.ok) {
+                        const roleData = await roleResponse.json();
+                        const roleDisplay = {
+                            'superadmin': 'Super Administrator',
+                            'content_admin': 'Content Administrator', 
+                            'moderator': 'Moderator',
+                            'viewer': 'Viewer'
+                        }[roleData.role] || 'Administrator';
+                        
+                        if (userRoleEl) userRoleEl.textContent = roleDisplay;
+                    } else {
+                        if (userRoleEl) userRoleEl.textContent = 'Administrator';
+                    }
+                } catch (roleError) {
+                    console.warn('Role fetch failed:', roleError.message);
+                    if (userRoleEl) userRoleEl.textContent = 'Administrator';
+                }
+                
                 if (signOutEl) {
                     signOutEl.addEventListener('click', async () => {
+                        // Clear all auth data
                         localStorage.removeItem('admin.auth.token');
                         localStorage.removeItem('admin.user.info');
+                        localStorage.removeItem('supabase.auth.token');
+                        
+                        // Optional: Call server logout endpoint
+                        try {
+                            await fetch('/admin/logout', {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`
+                                }
+                            });
+                        } catch (logoutError) {
+                            console.warn('Server logout failed:', logoutError.message);
+                        }
+                        
+                        // Redirect to login
                         window.location.href = '/login';
                     });
                 }
