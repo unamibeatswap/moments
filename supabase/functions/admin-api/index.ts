@@ -917,7 +917,110 @@ serve(async (req) => {
       })
     }
 
-    // Message approval endpoint - convert message to moment
+    // Broadcast campaign endpoint - convert to moment and broadcast
+    if (path.includes('/campaigns/') && path.includes('/broadcast') && method === 'POST') {
+      const campaignId = path.split('/campaigns/')[1].split('/broadcast')[0]
+      
+      // Get campaign details
+      const { data: campaign, error: campaignError } = await supabase
+        .from('campaigns')
+        .select('*')
+        .eq('id', campaignId)
+        .single()
+      
+      if (campaignError || !campaign) {
+        return new Response(JSON.stringify({ error: 'Campaign not found' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+      
+      // Convert campaign to moment for broadcasting
+      const { data: moment, error: momentError } = await supabase
+        .from('moments')
+        .insert({
+          title: campaign.title,
+          content: campaign.content,
+          region: campaign.target_regions?.[0] || 'GP',
+          category: campaign.target_categories?.[0] || 'Events',
+          sponsor_id: campaign.sponsor_id,
+          is_sponsored: !!campaign.sponsor_id,
+          content_source: 'campaign',
+          status: 'broadcasted',
+          created_by: 'campaign_system',
+          broadcasted_at: new Date().toISOString(),
+          media_urls: campaign.media_urls || []
+        })
+        .select()
+        .single()
+      
+      if (momentError) {
+        return new Response(JSON.stringify({ error: momentError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+      
+      // Get active subscribers
+      const { data: subscribers } = await supabase
+        .from('subscriptions')
+        .select('phone_number')
+        .eq('opted_in', true)
+      
+      const recipientCount = subscribers?.length || 0
+      
+      // Create broadcast record
+      const { data: broadcast } = await supabase
+        .from('broadcasts')
+        .insert({
+          moment_id: moment.id,
+          recipient_count: recipientCount,
+          status: 'processing',
+          broadcast_started_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+      
+      // Update campaign to published
+      await supabase
+        .from('campaigns')
+        .update({ status: 'published' })
+        .eq('id', campaignId)
+      
+      // Format broadcast message
+      const sponsorText = campaign.sponsor_id ? '\n\nSponsored Content' : ''
+      const broadcastMessage = `📢 Unami Foundation Campaign — ${moment.region}\n\n${moment.title}\n\n${moment.content}${sponsorText}\n\n🌐 More: moments.unamifoundation.org`
+      
+      // Trigger WhatsApp broadcast
+      try {
+        await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/broadcast-webhook`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            broadcast_id: broadcast.id,
+            message: broadcastMessage,
+            recipients: subscribers.map(s => s.phone_number),
+            moment_id: moment.id
+          })
+        })
+      } catch (webhookError) {
+        console.error('Campaign broadcast webhook error:', webhookError)
+      }
+      
+      return new Response(JSON.stringify({ 
+        success: true,
+        campaign_id: campaignId,
+        moment_id: moment.id,
+        broadcast_id: broadcast.id,
+        message: `Broadcasting campaign "${campaign.title}" to ${recipientCount} subscribers`,
+        recipient_count: recipientCount
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
     if (path.includes('/messages/') && path.includes('/approve') && method === 'POST') {
       const messageId = path.split('/messages/')[1].split('/approve')[0]
       
