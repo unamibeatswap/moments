@@ -234,50 +234,11 @@ async function processMessage(message, value) {
     }
 
     // Auto-create moment from ALL non-command messages (including media)
+    // BUT let soft moderation system handle the approval process
     if (!isCommand(content) && !isCasualMessage(command)) {
-      console.log('Creating moment from message');
-      try {
-        // For media without captions, create descriptive content
-        let momentContent = content;
-        let momentTitle = generateTitle(content);
-        
-        if (content === '[Image]' && mediaId) {
-          momentContent = 'Community shared an image';
-          momentTitle = 'Community Image Share';
-        } else if (content === '[Video]' && mediaId) {
-          momentContent = 'Community shared a video';
-          momentTitle = 'Community Video Share';
-        } else if (content === '[Audio message]' && mediaId) {
-          momentContent = 'Community shared an audio message';
-          momentTitle = 'Community Audio Share';
-        } else if (content === '[Document]' && mediaId) {
-          momentContent = 'Community shared a document';
-          momentTitle = 'Community Document Share';
-        }
-        
-        const { data: moment, error: momentError } = await supabase
-          .from('moments')
-          .insert({
-            title: momentTitle,
-            content: momentContent,
-            region: 'National',
-            category: 'Events',
-            content_source: 'whatsapp',
-            status: 'draft',
-            created_by: fromNumber,
-            media_urls: mediaId ? [`whatsapp_media_${mediaId}`] : []
-          })
-          .select()
-          .single();
-        
-        if (!momentError) {
-          console.log(`✅ Created moment: ${moment.title}`);
-        } else {
-          console.error('Moment creation error:', momentError);
-        }
-      } catch (momentCreationError) {
-        console.error('Moment creation failed:', momentCreationError);
-      }
+      console.log('Message will be processed by soft moderation system');
+      // The soft moderation system will automatically create moments for approved messages
+      // based on MCP analysis confidence scores
     }
 
     function isCommand(text) {
