@@ -157,12 +157,32 @@ serve(async (req) => {
             // Handle subscription commands
             const text = (message.text?.body || '').toLowerCase().trim()
             if (['start', 'join', 'subscribe'].includes(text)) {
-              await supabase.from('subscriptions').upsert({
+              const { data: existingSub } = await supabase
+                .from('subscriptions')
+                .select('*')
+                .eq('phone_number', message.from)
+                .single()
+              
+              const subscriptionData = {
                 phone_number: message.from,
                 opted_in: true,
                 opted_in_at: new Date().toISOString(),
-                last_activity: new Date().toISOString()
-              }, { onConflict: 'phone_number' })
+                last_activity: new Date().toISOString(),
+                regions: existingSub?.regions || ['National']
+              }
+              
+              const { error: subError } = await supabase
+                .from('subscriptions')
+                .upsert(subscriptionData, { 
+                  onConflict: 'phone_number',
+                  ignoreDuplicates: false 
+                })
+              
+              if (subError) {
+                console.error('Subscription error:', subError)
+              } else {
+                console.log('✅ User subscribed:', message.from)
+              }
               
               // WhatsApp compliant welcome message
               const welcomeMsg = `🌟 Welcome to Unami Foundation Moments!\n\nYou'll receive community updates and opportunities across South Africa.\n\nCommands:\n• HELP - Show options\n• STOP - Unsubscribe\n\n🌐 More: moments.unamifoundation.org`
@@ -170,12 +190,23 @@ serve(async (req) => {
               
               console.log('User subscribed and welcomed:', message.from)
             } else if (['stop', 'unsubscribe', 'quit', 'cancel'].includes(text)) {
-              await supabase.from('subscriptions').upsert({
-                phone_number: message.from,
-                opted_in: false,
-                opted_out_at: new Date().toISOString(),
-                last_activity: new Date().toISOString()
-              }, { onConflict: 'phone_number' })
+              const { error: unsubError } = await supabase
+                .from('subscriptions')
+                .upsert({
+                  phone_number: message.from,
+                  opted_in: false,
+                  opted_out_at: new Date().toISOString(),
+                  last_activity: new Date().toISOString()
+                }, { 
+                  onConflict: 'phone_number',
+                  ignoreDuplicates: false 
+                })
+              
+              if (unsubError) {
+                console.error('Unsubscription error:', unsubError)
+              } else {
+                console.log('✅ User unsubscribed:', message.from)
+              }
               
               // WhatsApp compliant goodbye message
               const goodbyeMsg = `✅ You have been unsubscribed successfully.\n\nThank you for being part of our community.\n\nReply START anytime to rejoin.\n\n🌐 Visit: moments.unamifoundation.org`

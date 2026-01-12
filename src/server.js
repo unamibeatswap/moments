@@ -164,7 +164,7 @@ app.get('/test-mcp', async (req, res) => {
 app.get('/webhook', verifyWebhook);
 
 // Middleware to verify incoming webhook requests from WhatsApp and internal systems.
-const verifyIncomingWebhook = (req, res, next) => {
+const verifyIncomingWebhook = async (req, res, next) => {
   // Internal n8n retries provide an internal secret header
   const internalSecret = req.get('x-internal-secret');
   if (internalSecret && process.env.INTERNAL_WEBHOOK_SECRET && internalSecret === process.env.INTERNAL_WEBHOOK_SECRET) {
@@ -174,23 +174,41 @@ const verifyIncomingWebhook = (req, res, next) => {
   // Verify HMAC signature if provided (e.g., X-Hub-Signature-256)
   const signature = req.get('x-hub-signature-256') || req.get('x-hub-signature');
   const hmacSecret = process.env.WEBHOOK_HMAC_SECRET;
+  
+  if (!signature && !hmacSecret) {
+    console.warn('No HMAC signature or secret configured - webhook security disabled');
+    return next();
+  }
+  
   if (signature && hmacSecret && req.rawBody) {
     try {
-      import('crypto').then(({ createHmac }) => {
-        const hmac = createHmac('sha256', hmacSecret).update(req.rawBody).digest('hex');
-        const prefixed = `sha256=${hmac}`;
-        if (signature === prefixed) return next();
-        console.warn('Webhook HMAC mismatch');
-        return res.status(403).json({ error: 'Invalid signature' });
+      const crypto = await import('crypto');
+      const hmac = crypto.createHmac('sha256', hmacSecret).update(req.rawBody).digest('hex');
+      const prefixed = `sha256=${hmac}`;
+      
+      if (signature === prefixed) {
+        return next();
+      }
+      
+      console.error('Webhook HMAC verification failed:', {
+        expected: prefixed.substring(0, 20) + '...',
+        received: signature.substring(0, 20) + '...'
       });
-      return;
+      return res.status(403).json({ error: 'Invalid signature' });
     } catch (err) {
-      console.error('HMAC verification error', err.message);
+      console.error('HMAC verification error:', err.message);
       return res.status(500).json({ error: 'Signature verification failure' });
     }
   }
 
+  // If HMAC is configured but no signature provided, reject
+  if (hmacSecret && !signature) {
+    console.warn('HMAC secret configured but no signature provided');
+    return res.status(403).json({ error: 'Missing signature' });
+  }
+
   // Fallback: if no signature or internal secret, reject
+  console.warn('Webhook request rejected - no valid authentication');
   return res.status(403).json({ error: 'Forbidden' });
 };
 
