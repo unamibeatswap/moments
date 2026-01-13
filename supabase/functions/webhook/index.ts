@@ -237,7 +237,7 @@ serve(async (req) => {
               }
               
               // WhatsApp compliant welcome message
-              const welcomeMsg = `🌟 Welcome to Unami Foundation Moments!\n\nYou'll receive community updates and opportunities across South Africa.\n\nCommands:\n• HELP - Show options\n• STOP - Unsubscribe\n\n🌐 More: moments.unamifoundation.org`
+              const welcomeMsg = `🌟 Welcome to Unami Foundation Moments!\n\nYou'll receive community updates and opportunities across South Africa.\n\nCommands:\n• HELP - Show options\n• STOP - Unsubscribe\n\n🌐 More: moments.unamifoundation.org/moments`
               await sendWhatsAppMessage(message.from, welcomeMsg)
               
               console.log('User subscribed and welcomed:', message.from)
@@ -261,13 +261,13 @@ serve(async (req) => {
               }
               
               // WhatsApp compliant goodbye message
-              const goodbyeMsg = `✅ You have been unsubscribed successfully.\n\nThank you for being part of our community.\n\nReply START anytime to rejoin.\n\n🌐 Visit: moments.unamifoundation.org`
+              const goodbyeMsg = `✅ You have been unsubscribed successfully.\n\nThank you for being part of our community.\n\n🌐 Visit: moments.unamifoundation.org/moments`
               await sendWhatsAppMessage(message.from, goodbyeMsg)
               
               console.log('User unsubscribed with confirmation:', message.from)
             } else if (['help', 'info', 'menu', '?'].includes(text)) {
               // Enhanced help command with all system commands
-              const helpMsg = `📡 Unami Foundation Moments - Command Guide\n\n🔄 START/JOIN - Subscribe to community updates\n🛑 STOP/UNSUBSCRIBE - Unsubscribe from updates\n❓ HELP/INFO - Show this command guide\n📍 REGIONS - Choose your areas of interest\n🏷️ INTERESTS - Manage content categories\n\n🌍 Available Regions:\nKZN (KwaZulu-Natal), WC (Western Cape)\nGP (Gauteng), EC (Eastern Cape)\nFS (Free State), LP (Limpopo)\nMP (Mpumalanga), NC (Northern Cape)\nNW (North West)\n\n📱 How to use:\n• Send any message to share with community\n• Reply with region codes: "KZN WC GP"\n• All content is moderated for safety\n\n🌐 Web: moments.unamifoundation.org\n📧 Support: info@unamifoundation.org\n\nYour community sharing platform 🇿🇦`
+              const helpMsg = `📡 Unami Foundation Moments - Command Guide\n\n🔄 START/JOIN - Subscribe to community updates\n🛑 STOP/UNSUBSCRIBE - Unsubscribe from updates\n❓ HELP/INFO - Show this command guide\n📍 REGIONS - Choose your areas of interest\n🏷️ INTERESTS - Manage content categories\n\n🌍 Available Regions:\nKZN (KwaZulu-Natal), WC (Western Cape)\nGP (Gauteng), EC (Eastern Cape)\nFS (Free State), LP (Limpopo)\nMP (Mpumalanga), NC (Northern Cape)\nNW (North West)\n\n📱 How to use:\n• Send any message to share with community\n• Reply with region codes: "KZN WC GP"\n• All content is moderated for safety\n\n🌐 Web: moments.unamifoundation.org/moments\n📧 Support: info@unamifoundation.org\n\nYour community sharing platform 🇿🇦`
               await sendWhatsAppMessage(message.from, helpMsg)
               
               console.log('Help sent to:', message.from)
@@ -348,7 +348,7 @@ serve(async (req) => {
                       })
                       .eq('id', moment.id)
                     
-                    const ackMsg = `📝 Thank you for sharing.\n\nYour message has been shared with the community.\n\n🌐 View: moments.unamifoundation.org`
+                    const ackMsg = `📝 Thank you for sharing.\n\nYour message has been received and will be reviewed for publication.\n\n🌐 View community moments: moments.unamifoundation.org/moments`
                     await sendWhatsAppMessage(message.from, ackMsg)
                   }
                 } else {

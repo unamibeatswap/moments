@@ -103,7 +103,7 @@
             </a>
             <div class="nav-links" id="nav-links">
                 <a href="/">Home</a>
-                <a href="/moments">Community</a>
+                <a href="/moments">Moments</a>
                 <a href="https://wa.me/27658295041?text=START" target="_blank">Join WhatsApp</a>
                 <a href="/admin-dashboard.html">Admin</a>
             </div>
@@ -180,7 +180,7 @@
                 </div>
                 <div class="footer-section">
                     <h4>Quick Links</h4>
-                    <p><a href="/moments">Community App</a></p>
+                    <p><a href="/moments">Moments App</a></p>
                     <p><a href="https://wa.me/27658295041?text=START">Join WhatsApp</a></p>
                     <p><a href="/admin-dashboard.html">Admin Dashboard</a></p>
                     <p><a href="/health">System Status</a></p>
@@ -242,11 +242,14 @@
                 if (currentFilters.region) params.append('region', currentFilters.region);
                 if (currentFilters.category) params.append('category', currentFilters.category);
                 if (currentFilters.source) params.append('source', currentFilters.source);
-                params.append('status', 'broadcasted'); // Only show broadcasted moments
                 
-                const response = await fetch(`https://bxmdzcxejcxbinghtyfw.supabase.co/functions/v1/admin-api/moments?${params}`);
-                const data = await response.json();
-                displayMoments(data.moments || []);
+                const response = await fetch(`https://bxmdzcxejcxbinghtyfw.supabase.co/rest/v1/moments?status=eq.broadcasted&publish_to_pwa=eq.true&select=*&${params}`, {
+                    headers: {
+                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4bWR6Y3hlamN4YmluZ2h0eWZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNzMzOTYsImV4cCI6MjA4Mzc0OTM5Nn0.ccwWS_LPLjUrY8zqHD0Q7pTEamdN-QV0bv6f0B1uBUU'
+                    }
+                });
+                const moments = await response.json();
+                displayMoments(moments || []);
             } catch (error) {
                 console.error('Failed to load moments:', error);
                 document.getElementById('moments-container').innerHTML = 
