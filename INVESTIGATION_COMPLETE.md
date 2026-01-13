@@ -10,7 +10,7 @@
 
 ### **PRIMARY ISSUE: MISSING BACKEND INFRASTRUCTURE**
 - **Supabase Project**: `bxmdzxejcxbinghtytfw.supabase.co` **DOES NOT EXIST**
-- **Vercel Deployment**: `https://momentsfinal.vercel.app` **DOES NOT EXIST**
+- **Vercel Deployment**: `https://moments.unamifoundation.org` **DOES NOT EXIST**
 - **Impact**: 100% system failure - no database, no API, no frontend access
 
 ### **SECONDARY ISSUES RESOLVED**

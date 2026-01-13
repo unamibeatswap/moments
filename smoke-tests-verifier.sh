@@ -32,7 +32,7 @@ echo ""
 echo "1️⃣ Testing webhook verification..."
 if command -v curl >/dev/null 2>&1; then
     # Test webhook verification endpoint
-    WEBHOOK_URL="${WEBHOOK_URL:-https://momentsfinal.vercel.app/webhook}"
+    WEBHOOK_URL="${WEBHOOK_URL:-https://moments.unamifoundation.org/webhook}"
     VERIFY_TOKEN="${WEBHOOK_VERIFY_TOKEN:-whatsapp_gateway_verify_2024_secure}"
     
     response=$(curl -s -w "%{http_code}" -o /dev/null \

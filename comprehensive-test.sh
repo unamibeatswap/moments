@@ -5,7 +5,7 @@ echo "🔍 COMPREHENSIVE ADMIN DASHBOARD TESTING"
 echo "========================================"
 
 # Test configuration
-SUPABASE_URL="https://bxmdzxejcxbinghtytfw.supabase.co"
+SUPABASE_URL="https://bxmdzcxejcxbinghtyfw.supabase.co"
 ADMIN_API_BASE="${SUPABASE_URL}/functions/v1/admin-api"
 
 # Colors for output
@@ -60,13 +60,13 @@ echo -e "${BLUE}Phase 1: Basic Connectivity Tests${NC}"
 echo "=================================="
 
 # Test 1: Health check
-run_test "System Health Check" "https://momentsfinal.vercel.app/health"
+run_test "System Health Check" "https://moments.unamifoundation.org/health"
 
 # Test 2: Admin dashboard page
-run_test "Admin Dashboard Page" "https://momentsfinal.vercel.app/admin-dashboard.html"
+run_test "Admin Dashboard Page" "https://moments.unamifoundation.org/admin-dashboard.html"
 
 # Test 3: Public moments page
-run_test "Public Moments Page" "https://momentsfinal.vercel.app/moments"
+run_test "Public Moments Page" "https://moments.unamifoundation.org/moments"
 
 echo ""
 echo -e "${BLUE}Phase 2: Supabase Edge Functions Tests${NC}"
@@ -224,7 +224,7 @@ echo "=================================="
 
 # Check environment variables
 echo -n "Checking Environment Config... "
-if grep -q "SUPABASE_URL=https://bxmdzxejcxbinghtytfw.supabase.co" /workspaces/moments/.env; then
+if grep -q "SUPABASE_URL=https://bxmdzcxejcxbinghtyfw.supabase.co" /workspaces/moments/.env; then
     echo -e "${GREEN}✓ PASS${NC} (Supabase URL correct)"
     PASSED_TESTS=$((PASSED_TESTS + 1))
 else

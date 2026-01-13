@@ -8,7 +8,7 @@
 - **Status**: 🔴 CRITICAL - System completely non-functional
 
 ### 2. **VERCEL DEPLOYMENT MISSING**
-- **Issue**: `https://momentsfinal.vercel.app` returns 404 "DEPLOYMENT_NOT_FOUND"
+- **Issue**: `https://moments.unamifoundation.org` returns 404 "DEPLOYMENT_NOT_FOUND"
 - **Impact**: No frontend access, no public API endpoints
 - **Status**: 🔴 CRITICAL - No user access to system
 
@@ -28,7 +28,7 @@
 
 ### ❌ **BROKEN COMPONENTS**
 1. **Supabase Project**: Project `bxmdzxejcxbinghtytfw` doesn't exist or is inaccessible
-2. **Vercel Deployment**: No active deployment at `momentsfinal.vercel.app`
+2. **Vercel Deployment**: No active deployment at `moments.unamifoundation.org`
 3. **Authentication System**: Cannot function without Supabase backend
 4. **All API Endpoints**: Non-functional due to missing backend services
 
