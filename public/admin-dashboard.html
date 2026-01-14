@@ -181,8 +181,8 @@
             .header { padding: 0.5rem 0; }
             .header h1 { font-size: 0.8rem; }
             .header h1 img { height: 20px; }
-            /* Fix section titles contrast on mobile */
-            .section h2, .section h3, .card h2, .card h3 { 
+            /* Fix all text contrast issues consistently */
+            .section h2, .section h3, .card h2, .card h3, .section-title { 
                 color: #1f2937 !important; 
                 background: rgba(255,255,255,0.95); 
                 padding: 0.75rem; 
@@ -190,18 +190,19 @@
                 margin-bottom: 1rem;
                 box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             }
-            /* Fix form labels */
-            .form-group label {
+            /* Fix form labels and all small text */
+            .form-group label, small, .moment-meta, .user-info, .card p, .card div {
                 color: #374151 !important;
-                font-weight: 600;
-                background: rgba(255,255,255,0.9);
-                padding: 0.25rem 0.5rem;
-                border-radius: 0.25rem;
-            }
-            /* Fix small text */
-            small, .moment-meta, .user-info {
-                color: #4b5563 !important;
                 font-weight: 500;
+            }
+            /* Fix system information text specifically */
+            .card div[style*="font-size: 0.875rem"], .card div strong {
+                color: #1f2937 !important;
+                background: rgba(255,255,255,0.9);
+                padding: 0.25rem;
+                border-radius: 0.25rem;
+                display: inline-block;
+                margin: 0.125rem 0;
             }
         }
         .footer { background: #f8fafc; border-top: 1px solid #e5e7eb; padding: 1rem 0; margin-top: 2rem; text-align: center; color: #6b7280; font-size: 0.875rem; }
