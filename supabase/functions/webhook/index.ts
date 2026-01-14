@@ -360,71 +360,62 @@ serve(async (req) => {
               // Handle category selection
               await handleCategorySelection(message.from, text, supabase)
               console.log('Category selection processed for:', message.from)
-            } else {
-              // Process as community content with Supabase MCP
-              try {
-                // Call Supabase MCP function
-                const { data: advisory, error: mcpError } = await supabase.rpc('mcp_advisory', {
-                  message_content: message.text?.body || '',
-                  message_language: 'eng',
-                  message_type: 'text',
+            } else if (message.context?.id) {
+              // Reply to a moment - create comment
+              const replyToMsgId = message.context.id
+              const { data: whatsappComment } = await supabase
+                .from('whatsapp_comments')
+                .select('moment_id')
+                .eq('whatsapp_message_id', replyToMsgId)
+                .single()
+              
+              if (whatsappComment?.moment_id) {
+                const { data: comment } = await supabase.from('comments').insert({
+                  moment_id: whatsappComment.moment_id,
                   from_number: message.from,
-                  message_timestamp: new Date().toISOString()
+                  content: message.text?.body || '',
+                  moderation_status: 'pending'
+                }).select().single()
+                
+                if (comment) {
+                  await supabase.from('whatsapp_comments').insert({
+                    whatsapp_message_id: message.id,
+                    comment_id: comment.id,
+                    from_number: message.from,
+                    moment_id: whatsappComment.moment_id,
+                    reply_to_message_id: replyToMsgId,
+                    media_type: 'text'
+                  })
+                  
+                  await sendWhatsAppMessage(message.from, '💬 Comment received! It will be reviewed and published soon.')
+                  console.log('Comment created from WhatsApp reply')
+                }
+              }
+            } else {
+              // Process as community content
+              const content = message.text?.body || ''
+              const words = content.trim().split(' ')
+              const title = words.length <= 8 ? content : words.slice(0, 8).join(' ') + '...'
+              
+              const { data: moment } = await supabase.from('moments').insert({
+                title,
+                content,
+                region: 'National',
+                category: 'Community',
+                status: 'draft',
+                created_by: 'community',
+                content_source: 'whatsapp'
+              }).select().single()
+              
+              if (moment) {
+                await supabase.from('whatsapp_comments').insert({
+                  whatsapp_message_id: message.id,
+                  from_number: message.from,
+                  moment_id: moment.id,
+                  media_type: 'text'
                 })
                 
-                // Default safe advisory if MCP fails
-                const safeAdvisory = advisory || {
-                  harm_signals: { confidence: 0 },
-                  spam_indicators: { confidence: 0 },
-                  urgency_level: 'low'
-                }
-                
-                // Simple moderation logic
-                const shouldPublish = (safeAdvisory.harm_signals?.confidence || 0) < 0.7 && 
-                                    (safeAdvisory.spam_indicators?.confidence || 0) < 0.7
-                
-                if (shouldPublish) {
-                  const content = message.text?.body || ''
-                  const words = content.trim().split(' ')
-                  const title = words.length <= 8 ? content : words.slice(0, 8).join(' ') + '...'
-                  
-                  const { data: moment, error: momentError } = await supabase
-                    .from('moments')
-                    .insert({
-                      title: title,
-                      content: content,
-                      raw_content: content,
-                      region: 'National',
-                      category: 'Community',
-                      status: 'draft',
-                      created_by: 'community',
-                      content_source: 'community',
-                      is_sponsored: false,
-                      urgency_level: safeAdvisory.urgency_level || 'low'
-                    })
-                    .select()
-                    .single()
-                  
-                  if (!momentError && moment) {
-                    console.log('Community moment created:', moment.title)
-                    
-                    // Queue for async broadcast (remove blocking broadcast)
-                    await supabase
-                      .from('moments')
-                      .update({ 
-                        status: 'pending_broadcast',
-                        created_at: new Date().toISOString()
-                      })
-                      .eq('id', moment.id)
-                    
-                    const ackMsg = `📝 Thank you for sharing.\n\nYour message has been received and will be reviewed for publication.\n\n🌐 View community moments: moments.unamifoundation.org/moments`
-                    await sendWhatsAppMessage(message.from, ackMsg)
-                  }
-                } else {
-                  console.log('Message blocked by MCP moderation')
-                }
-              } catch (error) {
-                console.error('Community processing failed:', error)
+                await sendWhatsAppMessage(message.from, '📝 Thank you! Your message will be reviewed for publication.\n\n🌐 moments.unamifoundation.org/moments')
               }
             }
 
