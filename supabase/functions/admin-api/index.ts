@@ -145,7 +145,7 @@ serve(async (req) => {
     // Public API endpoints for PWA (NO AUTH REQUIRED)
     
     // Unified analytics endpoint (used by PWA)
-    if (path === '/analytics' && method === 'GET') {
+    if (path.includes('/analytics') && method === 'GET' && !path.includes('/dashboard') && !path.includes('/revenue') && !path.includes('/campaigns')) {
       const { data } = await supabase.from('unified_analytics').select('*').single()
       return new Response(JSON.stringify({
         totalMoments: data?.total_moments || 0,
