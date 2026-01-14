@@ -468,7 +468,37 @@ serve(async (req) => {
 
     // Create moment with auto-broadcast logic
     if (path.includes('/moments') && method === 'POST' && body) {
-      await logAudit(supabase, 'admin', 'create', 'moment', '', body)
+      // Marketing compliance validation
+      const complianceIssues = []
+      if (body.is_sponsored || body.sponsor_id) {
+        if (!body.sponsor_id) complianceIssues.push('Sponsored content requires sponsor_id')
+        if (!body.pwa_link) complianceIssues.push('Marketing content should include PWA verification link')
+      }
+      if (body.content && body.content.toLowerCase().includes('urgent') && !body.sponsor_id) {
+        complianceIssues.push('Urgency language detected - ensure compliance with Meta guidelines')
+      }
+      
+      // Log compliance check
+      if (complianceIssues.length > 0) {
+        console.warn('Compliance warnings:', complianceIssues)
+      }
+      
+      await logAudit(supabase, 'admin', 'create', 'moment', '', { ...body, compliance_warnings: complianceIssues })
+      
+      // Build partner attribution
+      let partnerAttribution = null
+      if (body.sponsor_id) {
+        const { data: sponsor } = await supabase
+          .from('sponsors')
+          .select('display_name')
+          .eq('id', body.sponsor_id)
+          .single()
+        
+        if (sponsor) {
+          partnerAttribution = `Presented by ${sponsor.display_name} via Unami Foundation Moments App`
+        }
+      }
+      
       const { data: moment, error } = await supabase
         .from('moments')
         .insert({
@@ -478,6 +508,7 @@ serve(async (req) => {
           category: body.category || 'General',
           sponsor_id: body.sponsor_id || null,
           is_sponsored: !!body.sponsor_id,
+          partner_attribution: partnerAttribution,
           pwa_link: body.pwa_link || null,
           scheduled_at: body.scheduled_at || null,
           media_urls: body.media_urls || [],

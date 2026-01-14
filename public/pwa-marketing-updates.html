@@ -1,0 +1,267 @@
+<!-- PWA Copy Updates for Marketing Template Compliance -->
+<!-- Replace these sections in public/moments/index.html -->
+
+<!-- HERO SECTION UPDATE -->
+<section class="hero">
+  <div class="container">
+    <h1>📢 Unami Foundation Moments</h1>
+    <p class="subtitle">Your Digital Notice Board for South African Communities</p>
+    <p class="description">
+      Stay connected with local opportunities, events, and community updates across South Africa.
+      Delivered directly to your WhatsApp.
+    </p>
+    <div class="cta-buttons">
+      <a href="https://wa.me/27658295041?text=START" class="btn btn-primary">
+        📱 Subscribe via WhatsApp
+      </a>
+      <a href="#moments-feed" class="btn btn-secondary">
+        Browse Moments
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT SECTION UPDATE -->
+<section class="about">
+  <div class="container">
+    <h2>What are Moments?</h2>
+    <p>
+      Moments are community-verified updates about opportunities, events, and resources 
+      in your region. Think of it as a digital notice board for your community.
+    </p>
+    
+    <div class="features-grid">
+      <div class="feature">
+        <span class="feature-icon">🏘️</span>
+        <h3>Community-First</h3>
+        <p>Local updates from trusted sources and community partners</p>
+      </div>
+      
+      <div class="feature">
+        <span class="feature-icon">🔒</span>
+        <h3>Privacy-Respecting</h3>
+        <p>No tracking, no data selling. Opt-out anytime with STOP</p>
+      </div>
+      
+      <div class="feature">
+        <span class="feature-icon">✅</span>
+        <h3>Verified Content</h3>
+        <p>All moments reviewed for accuracy and community benefit</p>
+      </div>
+      
+      <div class="feature">
+        <span class="feature-icon">🤝</span>
+        <h3>Partner-Supported</h3>
+        <p>Sponsored content clearly labeled and community-relevant</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SPONSORED CONTENT DISCLOSURE -->
+<section class="transparency">
+  <div class="container">
+    <h2>About Sponsored Moments</h2>
+    <p>
+      Some moments are sponsored by community partners who support our mission. 
+      Sponsored content is always:
+    </p>
+    <ul>
+      <li>✅ Clearly labeled with [Sponsored] tag</li>
+      <li>✅ Relevant to your selected regions and categories</li>
+      <li>✅ Reviewed for community benefit and accuracy</li>
+      <li>✅ Compliant with Meta's marketing guidelines</li>
+    </ul>
+    <p>
+      <strong>Partner attribution:</strong> All sponsored moments include clear 
+      attribution like "Presented by [Partner Name] via Unami Foundation Moments App"
+    </p>
+  </div>
+</section>
+
+<!-- FOOTER UPDATE -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-section">
+        <h4>Unami Foundation Moments</h4>
+        <p>Your Digital Notice Board for South African Communities</p>
+        <p>📱 WhatsApp: +27 65 829 5041</p>
+        <p>📧 info@unamifoundation.org</p>
+      </div>
+      
+      <div class="footer-section">
+        <h4>Quick Links</h4>
+        <ul>
+          <li><a href="#moments-feed">Browse Moments</a></li>
+          <li><a href="/analytics.html">Community Stats</a></li>
+          <li><a href="https://wa.me/27658295041?text=START">Subscribe</a></li>
+        </ul>
+      </div>
+      
+      <div class="footer-section">
+        <h4>Transparency</h4>
+        <ul>
+          <li><a href="#sponsored-policy">Sponsored Content Policy</a></li>
+          <li><a href="#privacy">Privacy & Data</a></li>
+          <li><a href="#compliance">Meta Compliance</a></li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="footer-bottom">
+      <p>&copy; 2026 Unami Foundation. All rights reserved.</p>
+      <p>
+        <small>
+          Moments are delivered via WhatsApp Business API. 
+          Reply STOP anytime to unsubscribe. 
+          Sponsored content clearly labeled and partner-attributed.
+        </small>
+      </p>
+    </div>
+  </div>
+</footer>
+
+<!-- MOMENT CARD TEMPLATE UPDATE -->
+<script>
+// Update moment rendering to show partner attribution
+function renderMomentCard(moment) {
+  const card = document.createElement('div');
+  card.className = 'moment-card';
+  
+  // Sponsored badge
+  const sponsoredBadge = moment.is_sponsored 
+    ? '<span class="badge badge-sponsored">⭐ Sponsored</span>' 
+    : '';
+  
+  // Partner attribution
+  const partnerAttribution = moment.partner_attribution
+    ? `<p class="partner-attribution">${moment.partner_attribution}</p>`
+    : '<p class="attribution">Unami Foundation Moments App | info@unamifoundation.org</p>';
+  
+  card.innerHTML = `
+    <div class="moment-header">
+      <span class="moment-region">${moment.region}</span>
+      <span class="moment-category">${moment.category}</span>
+      ${sponsoredBadge}
+    </div>
+    
+    <h3 class="moment-title">${escapeHtml(moment.title)}</h3>
+    <p class="moment-content">${escapeHtml(moment.content)}</p>
+    
+    ${partnerAttribution}
+    
+    <div class="moment-footer">
+      <span class="moment-date">${formatDate(moment.broadcasted_at)}</span>
+      <a href="${moment.pwa_link || '#'}" class="btn btn-sm">Learn More</a>
+    </div>
+  `;
+  
+  return card;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-ZA', { 
+    year: 'numeric', 
+    month: 'short', 
+    day: 'numeric' 
+  });
+}
+</script>
+
+<!-- CSS ADDITIONS -->
+<style>
+.badge-sponsored {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.partner-attribution {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-style: italic;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.attribution {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  margin-top: 1rem;
+}
+
+.transparency {
+  background: #f8fafc;
+  padding: 3rem 0;
+  margin: 3rem 0;
+}
+
+.transparency ul {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0;
+}
+
+.transparency li {
+  padding: 0.5rem 0;
+  font-size: 1.125rem;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.feature {
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.feature-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.footer-section h4 {
+  margin-bottom: 1rem;
+  color: #1f2937;
+}
+
+.footer-section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.footer-section li {
+  margin-bottom: 0.5rem;
+}
+
+.footer-bottom {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 2rem;
+  text-align: center;
+  color: #6b7280;
+}
+</style>

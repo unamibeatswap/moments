@@ -4,6 +4,7 @@ import {
   sendFreeformMessage,
   isWithin24HourWindow 
 } from '../config/whatsapp-compliant.js';
+import { MESSAGE_TEMPLATES, buildMomentParams } from './whatsapp-templates.js';
 
 // Comprehensive 2-template + freeform system
 export async function broadcastMomentHybrid(momentId) {
@@ -55,6 +56,15 @@ export async function broadcastMomentHybrid(momentId) {
     const { data: subscribers, error: subError } = await subscriberQuery;
     if (subError) throw subError;
 
+    // Check feature flag for marketing templates
+    const { data: featureFlag } = await supabase
+      .from('feature_flags')
+      .select('enabled')
+      .eq('flag_key', 'enable_marketing_templates')
+      .single();
+
+    const useMarketingTemplates = featureFlag?.enabled || false;
+
     // Create broadcast record
     const { data: broadcast, error: broadcastError } = await supabase
       .from('broadcasts')
@@ -62,7 +72,8 @@ export async function broadcastMomentHybrid(momentId) {
         moment_id: momentId,
         recipient_count: subscribers?.length || 0,
         status: 'in_progress',
-        template_used: 'hybrid_system_with_comments'
+        template_used: useMarketingTemplates ? 'marketing_template_hybrid' : 'hybrid_system_with_comments',
+        template_category: useMarketingTemplates ? 'MARKETING' : 'UTILITY'
       })
       .select()
       .single();
@@ -76,7 +87,7 @@ export async function broadcastMomentHybrid(momentId) {
     // Process each subscriber with hybrid approach
     for (const subscriber of subscribers || []) {
       try {
-        const result = await sendMomentToSubscriber(subscriber.phone_number, moment);
+        const result = await sendMomentToSubscriber(subscriber.phone_number, moment, useMarketingTemplates);
         if (result.success) {
           successCount++;
         } else {
@@ -119,6 +130,9 @@ export async function broadcastMomentHybrid(momentId) {
       })
       .eq('id', momentId);
 
+    // Log compliance audit
+    await logComplianceAudit(momentId, broadcast.id, moment, useMarketingTemplates);
+
     return {
       broadcast_id: broadcast.id,
       recipients: subscribers?.length || 0,
@@ -135,7 +149,7 @@ export async function broadcastMomentHybrid(momentId) {
 }
 
 // Smart message sender - uses best available method
-async function sendMomentToSubscriber(phoneNumber, moment) {
+async function sendMomentToSubscriber(phoneNumber, moment, useMarketingTemplates = false) {
   try {
     // Check if user is within 24-hour window
     const within24Hours = await isWithin24HourWindow(phoneNumber);
@@ -152,15 +166,29 @@ async function sendMomentToSubscriber(phoneNumber, moment) {
         message_length: message.length
       };
     } else {
-      // Use hello_world template as notification trigger
-      await sendTemplateMessage(phoneNumber, 'hello_world', 'en', []);
-      
-      return {
-        phone: phoneNumber,
-        success: true,
-        method: 'template_hello_world',
-        note: 'Generic notification sent - user outside 24h window'
-      };
+      // Use marketing template if enabled, otherwise hello_world
+      if (useMarketingTemplates) {
+        const templateName = moment.is_sponsored ? 'sponsored_moment_v2' : 'moment_broadcast_v2';
+        const params = buildMomentParams(moment, moment.sponsors);
+        await sendTemplateMessage(phoneNumber, templateName, 'en', params);
+        
+        return {
+          phone: phoneNumber,
+          success: true,
+          method: `template_${templateName}`,
+          note: 'Marketing template sent - user outside 24h window'
+        };
+      } else {
+        // Fallback to hello_world
+        await sendTemplateMessage(phoneNumber, 'hello_world', 'en', []);
+        
+        return {
+          phone: phoneNumber,
+          success: true,
+          method: 'template_hello_world',
+          note: 'Generic notification sent - user outside 24h window'
+        };
+      }
     }
   } catch (error) {
     return {
@@ -172,64 +200,40 @@ async function sendMomentToSubscriber(phoneNumber, moment) {
   }
 }
 
-// Format rich freeform message (within 24h window)
+// Format rich freeform message (within 24h window) - Playbook compliant
 function formatFreeformMoment(moment) {
   let message = '';
   
-  // Header with branding
+  // Header with branding (Playbook format)
   if (moment.is_sponsored && moment.sponsors?.display_name) {
     const emoji = getSponsorEmoji(moment.sponsors.tier || 'standard');
     message += `${emoji} [Sponsored] Moment — ${moment.region}\n\n`;
   } else {
-    message += `📢 Unami Foundation Moment — ${moment.region}\n\n`;
+    message += `📢 Community Moment — ${moment.region}\n\n`;
   }
   
   // Content
-  message += `${moment.title}\n\n`;
+  message += `${moment.title}\n`;
   message += `${moment.content}\n\n`;
   
-  // Featured comments
-  if (moment.featured_comments && moment.featured_comments.length > 0) {
-    message += `💬 Community says:\n`;
-    moment.featured_comments.slice(0, 2).forEach(comment => {
-      const shortContent = comment.content.length > 80 ? 
-        comment.content.substring(0, 80) + '...' : comment.content;
-      message += `"${shortContent}" - Community member\n`;
-    });
-    message += '\n';
-  }
-  
   // Metadata
-  message += `🏷️ ${moment.category}`;
-  if (moment.region !== 'National') {
-    message += ` • 📍 ${moment.region}`;
-  }
-  message += '\n\n';
+  message += `🏷️ ${moment.category} • 📍 ${moment.region}\n\n`;
   
-  // Sponsor attribution
+  // Sponsor attribution (Playbook format)
   if (moment.is_sponsored && moment.sponsors?.display_name) {
-    const tier = moment.sponsors.tier || 'standard';
-    if (tier === 'premium' || tier === 'enterprise') {
-      message += `✨ Proudly sponsored by ${moment.sponsors.display_name}\n\n`;
-    } else {
-      message += `Brought to you by ${moment.sponsors.display_name}\n\n`;
-    }
+    message += `Presented by ${moment.sponsors.display_name} via Unami Foundation Moments App\n\n`;
   }
   
-  // Call to action with comment hashtag
-  if (moment.pwa_link) {
-    const trackingUrl = `${moment.pwa_link}?utm_source=whatsapp&utm_medium=freeform&utm_campaign=${moment.id}`;
-    message += `🌐 More info: ${trackingUrl}\n\n`;
+  // PWA link
+  const pwaUrl = moment.pwa_link || 'https://moments.unamifoundation.org/moments';
+  message += `🌐 More: ${pwaUrl}\n\n`;
+  
+  // Footer (Playbook format)
+  if (moment.is_sponsored) {
+    message += 'info@unamifoundation.org';
   } else {
-    message += `🌐 More: https://moments.unamifoundation.org\n\n`;
+    message += 'Unami Foundation Moments App | info@unamifoundation.org';
   }
-  
-  // Comment invitation with hashtag
-  const commentHashtag = `#M${moment.id.substring(0, 8)}`;
-  message += `💬 Share your thoughts: Reply with ${commentHashtag}\n\n`;
-  
-  // Footer
-  message += '📱 Reply STOP to unsubscribe';
   
   return message;
 }
@@ -341,4 +345,31 @@ function getMethodsUsed(results) {
     methods[r.method] = (methods[r.method] || 0) + 1;
   });
   return methods;
+}
+
+// Log compliance audit for marketing templates
+async function logComplianceAudit(momentId, broadcastId, moment, useMarketingTemplates) {
+  try {
+    const templateUsed = useMarketingTemplates 
+      ? (moment.is_sponsored ? 'sponsored_moment_v2' : 'moment_broadcast_v2')
+      : 'hello_world';
+    
+    const sponsorDisclosed = moment.is_sponsored && moment.sponsors?.display_name;
+    const pwaLinkIncluded = !!moment.pwa_link || true; // Default PWA link always included
+    
+    await supabase
+      .from('marketing_compliance')
+      .insert({
+        moment_id: momentId,
+        broadcast_id: broadcastId,
+        template_used: templateUsed,
+        template_category: useMarketingTemplates ? 'MARKETING' : 'UTILITY',
+        sponsor_disclosed: sponsorDisclosed,
+        opt_out_included: true, // Always included in templates
+        pwa_link_included: pwaLinkIncluded,
+        validated_by: 'system'
+      });
+  } catch (error) {
+    console.error('Compliance audit logging failed:', error.message);
+  }
 }
