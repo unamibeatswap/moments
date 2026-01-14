@@ -1092,6 +1092,118 @@ serve(async (req) => {
       })
     }
 
+    // Comments endpoints
+    // GET /moments/:id/comments
+    if (path.match(/\/moments\/[^\/]+\/comments$/) && method === 'GET') {
+      const momentId = path.split('/moments/')[1].split('/comments')[0]
+      const { data: comments } = await supabase
+        .from('comments')
+        .select('*')
+        .eq('moment_id', momentId)
+        .eq('moderation_status', 'approved')
+        .order('created_at', { ascending: false })
+      
+      return new Response(JSON.stringify({ comments: comments || [] }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // POST /moments/:id/comments
+    if (path.match(/\/moments\/[^\/]+\/comments$/) && method === 'POST') {
+      const momentId = path.split('/moments/')[1].split('/comments')[0]
+      
+      const { data: comment, error } = await supabase
+        .from('comments')
+        .insert({
+          moment_id: momentId,
+          from_number: body.from_number || 'anonymous',
+          content: body.content,
+          moderation_status: 'pending'
+        })
+        .select()
+        .single()
+      
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+      
+      return new Response(JSON.stringify({ comment }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // POST /comments/:id/approve
+    if (path.match(/\/comments\/[^\/]+\/approve$/) && method === 'POST') {
+      const commentId = path.split('/comments/')[1].split('/approve')[0]
+      
+      const { error } = await supabase
+        .from('comments')
+        .update({ 
+          moderation_status: 'approved',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', commentId)
+      
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+      
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // POST /comments/:id/feature
+    if (path.match(/\/comments\/[^\/]+\/feature$/) && method === 'POST') {
+      const commentId = path.split('/comments/')[1].split('/feature')[0]
+      
+      const { error } = await supabase
+        .from('comments')
+        .update({ 
+          featured: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', commentId)
+      
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+      
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // DELETE /comments/:id
+    if (path.match(/\/comments\/[^\/]+$/) && method === 'DELETE') {
+      const commentId = path.split('/comments/')[1].split('?')[0]
+      
+      const { error } = await supabase
+        .from('comments')
+        .delete()
+        .eq('id', commentId)
+      
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+      
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     // Process scheduled moments endpoint
     if (path.includes('/process-scheduled') && method === 'POST') {
       const { data: scheduledMoments } = await supabase
