@@ -329,10 +329,6 @@
                         <span class="icon icon-broadcasts"></span>
                         <span>Broadcasts</span>
                     </button>
-                    <button class="admin-nav-item" data-section="compliance">
-                        <span class="icon icon-compliance"></span>
-                        <span>Compliance</span>
-                    </button>
                     <button class="admin-nav-item" data-section="settings">
                         <span class="icon icon-settings"></span>
                         <span>Settings</span>
@@ -350,35 +346,11 @@
         <!-- Dashboard Section -->
         <div id="dashboard" class="section active">
             <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h2>Analytics Overview</h2>
-                    <button class="btn btn-sm" onclick="refreshDashboardAnalytics()">🔄 Refresh</button>
-                </div>
+                <h2>Analytics Overview</h2>
                 <div id="analytics" class="analytics-grid">
                     <div class="loading">Loading analytics...</div>
                 </div>
             </div>
-            
-            <div class="card">
-                <h3>30-Day Trend</h3>
-                <canvas id="trendChart" style="max-height: 300px;"></canvas>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-                <div class="card">
-                    <h3>Regional Performance</h3>
-                    <canvas id="regionalChart" style="max-height: 250px;"></canvas>
-                </div>
-                <div class="card">
-                    <h3>Category Distribution</h3>
-                    <canvas id="categoryChart" style="max-height: 250px;"></canvas>
-                </div>
-            </div>
-            
-            <div class="card template-analytics">
-                <div class="loading">Loading template analytics...</div>
-            </div>
-            
             <div class="card">
                 <h3>Data Pipeline Status</h3>
                 <div id="pipeline-status">
@@ -818,34 +790,6 @@
                 <h2>Broadcast History</h2>
                 <div id="broadcasts-list">
                     <div class="loading">Loading broadcasts...</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Compliance Section -->
-        <div id="compliance" class="section">
-            <div class="card">
-                <h2>📊 Marketing Template Compliance</h2>
-                <div class="analytics-grid" style="margin-bottom: 1.5rem;">
-                    <div class="stat-card">
-                        <div class="stat-number" id="compliance-total">0</div>
-                        <div class="stat-label">Total Audits</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number" id="compliance-avg">0</div>
-                        <div class="stat-label">Avg Score</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number" id="compliance-perfect">0</div>
-                        <div class="stat-label">Perfect (100)</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number" id="compliance-issues">0</div>
-                        <div class="stat-label">Issues (&lt;90)</div>
-                    </div>
-                </div>
-                <div id="compliance-list">
-                    <div class="loading">Loading compliance data...</div>
                 </div>
             </div>
         </div>
@@ -1557,7 +1501,6 @@
                 // Initialize the admin interface with error handling
                 try {
                     await loadAnalytics();
-                    await refreshDashboardAnalytics(); // Load charts
                 } catch (e) {
                     console.warn('Analytics load failed:', e.message);
                     const analytics = document.getElementById('analytics');
@@ -1608,113 +1551,10 @@
             }
         });
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="/js/admin.js"></script>
     <script src="/js/admin-users.js"></script>
     <script src="/js/analytics.js"></script>
     <script src="/js/compliance.js"></script>
-    <script src="/js/compliance-dashboard.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script>
-        // Dashboard analytics with charts
-        let trendChart, regionalChart, categoryChart;
-        
-        async function refreshDashboardAnalytics() {
-            try {
-                const token = localStorage.getItem('admin.auth.token');
-                const res = await fetch('https://bxmdzcxejcxbinghtyfw.supabase.co/functions/v1/admin-api/analytics/dashboard', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const data = await res.json();
-                
-                // Update stats cards
-                const latest = data.daily[0] || {};
-                const adoption = data.adoption || {};
-                document.getElementById('analytics').innerHTML = `
-                    <div class="stat-card"><div class="stat-number">${latest.total_moments || 0}</div><div class="stat-label">Total Moments</div></div>
-                    <div class="stat-card"><div class="stat-number">${latest.active_subscribers || 0}</div><div class="stat-label">Active Subscribers</div></div>
-                    <div class="stat-card"><div class="stat-number">${latest.total_broadcasts || 0}</div><div class="stat-label">Total Broadcasts</div></div>
-                    <div class="stat-card"><div class="stat-number">${adoption.adoption_rate || 0}%</div><div class="stat-label">Template v2 Adoption</div></div>
-                `;
-                
-                // Trend chart
-                if (trendChart) trendChart.destroy();
-                trendChart = new Chart(document.getElementById('trendChart'), {
-                    type: 'line',
-                    data: {
-                        labels: data.daily.map(d => d.stat_date).reverse(),
-                        datasets: [{
-                            label: 'Moments',
-                            data: data.daily.map(d => d.total_moments).reverse(),
-                            borderColor: '#2563eb',
-                            tension: 0.4
-                        }, {
-                            label: 'Broadcasts',
-                            data: data.daily.map(d => d.total_broadcasts).reverse(),
-                            borderColor: '#10b981',
-                            tension: 0.4
-                        }]
-                    },
-                    options: { responsive: true, maintainAspectRatio: true }
-                });
-                
-                // Regional chart
-                if (regionalChart) regionalChart.destroy();
-                regionalChart = new Chart(document.getElementById('regionalChart'), {
-                    type: 'bar',
-                    data: {
-                        labels: data.regional.map(r => r.region),
-                        datasets: [{
-                            label: 'Moments',
-                            data: data.regional.map(r => r.moment_count),
-                            backgroundColor: '#2563eb'
-                        }]
-                    },
-                    options: { responsive: true, maintainAspectRatio: true }
-                });
-                
-                // Category chart
-                if (categoryChart) categoryChart.destroy();
-                categoryChart = new Chart(document.getElementById('categoryChart'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: data.category.map(c => c.category),
-                        datasets: [{
-                            data: data.category.map(c => c.moment_count),
-                            backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16']
-                        }]
-                    },
-                    options: { responsive: true, maintainAspectRatio: true }
-                });
-                
-                // Template performance table
-                if (data.templates && data.templates.length > 0) {
-                    const templateTable = data.templates.slice(0, 10).map(t => `
-                        <tr>
-                            <td>${t.broadcast_date}</td>
-                            <td>${t.template_name || 'N/A'}</td>
-                            <td>${t.total_sent}</td>
-                            <td>${t.delivery_rate}%</td>
-                            <td>${t.sponsored_count}</td>
-                            <td>${t.avg_compliance_score ? Math.round(t.avg_compliance_score) : 'N/A'}</td>
-                        </tr>
-                    `).join('');
-                    
-                    const templateSection = document.querySelector('.template-analytics');
-                    if (templateSection) {
-                        templateSection.innerHTML = `
-                            <h3>Template Performance (Last 30 Days)</h3>
-                            <table class="table">
-                                <thead><tr><th>Date</th><th>Template</th><th>Sent</th><th>Delivery %</th><th>Sponsored</th><th>Compliance</th></tr></thead>
-                                <tbody>${templateTable}</tbody>
-                            </table>
-                        `;
-                    }
-                }
-            } catch (error) {
-                console.error('Analytics refresh failed:', error);
-                document.getElementById('analytics').innerHTML = '<div class="error">Failed to load analytics</div>';
-            }
-        }
-    </script>
 </body>
 </html>

@@ -47,7 +47,7 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=()');
   // Content Security Policy: restrict to same-origin and known CDNs
-  res.setHeader('Content-Security-Policy', "default-src 'self'; connect-src 'self' https://bxmdzcxejcxbinghtyfw.supabase.co https://api.supabase.com; img-src 'self' data: https:; media-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';");
+  res.setHeader('Content-Security-Policy', "default-src 'self'; connect-src 'self' https://bxmdzcxejcxbinghtyfw.supabase.co https://api.supabase.com; img-src 'self' data: https:; media-src 'self' https:; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';");
   next();
 });
 
