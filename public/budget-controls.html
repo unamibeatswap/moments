@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget Controls - Moments Admin</title>
+    <style>
+        .budget-card { background: white; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .budget-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+        .budget-meter { width: 100%; height: 20px; background: #e5e7eb; border-radius: 10px; overflow: hidden; margin: 0.5rem 0; }
+        .budget-fill { height: 100%; transition: width 0.3s ease; }
+        .budget-fill.low { background: #16a34a; }
+        .budget-fill.medium { background: #f59e0b; }
+        .budget-fill.high { background: #dc2626; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.25rem; font-weight: 500; }
+        .form-group input, .form-group select { width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px; }
+        .btn { padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-success { background: #16a34a; color: white; }
+        .btn-danger { background: #dc2626; color: white; }
+        .alert { padding: 1rem; border-radius: 4px; margin-bottom: 1rem; }
+        .alert-warning { background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; }
+        .alert-danger { background: #fee2e2; color: #991b1b; border: 1px solid #dc2626; }
+    </style>
+</head>
+<body>
+    <div style="max-width: 1200px; margin: 0 auto; padding: 2rem;">
+        <h1>Budget Controls</h1>
+        
+        <!-- Global Budget Overview -->
+        <div class="budget-card">
+            <h2>Global Budget Status</h2>
+            <div class="budget-grid">
+                <div>
+                    <h3>Monthly Budget: R<span id="global-budget">10000</span></h3>
+                    <div class="budget-meter">
+                        <div class="budget-fill low" id="global-fill" style="width: 45%"></div>
+                    </div>
+                    <p>Used: R<span id="global-used">4500</span> / R<span id="global-total">10000</span></p>
+                </div>
+                <div>
+                    <h3>Message Costs (Template)</h3>
+                    <p>Cost per message: R0.12</p>
+                    <p>Messages sent: <span id="messages-sent">37500</span></p>
+                    <p>Remaining: <span id="messages-remaining">45833</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Budget Controls -->
+        <div class="budget-card">
+            <h2>Budget Settings</h2>
+            <div class="budget-grid">
+                <div>
+                    <div class="form-group">
+                        <label>Monthly Budget Limit (R)</label>
+                        <input type="number" id="monthly-budget" value="10000" min="1000" step="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Warning Threshold (%)</label>
+                        <input type="number" id="warning-threshold" value="80" min="50" max="95">
+                    </div>
+                    <div class="form-group">
+                        <label>Auto-pause at (%)</label>
+                        <input type="number" id="pause-threshold" value="95" min="80" max="100">
+                    </div>
+                </div>
+                <div>
+                    <div class="form-group">
+                        <label>Template Message Cost (R)</label>
+                        <input type="number" id="message-cost" value="0.12" step="0.01" min="0.05" max="0.50">
+                    </div>
+                    <div class="form-group">
+                        <label>Daily Spend Limit (R)</label>
+                        <input type="number" id="daily-limit" value="500" min="50" step="50">
+                    </div>
+                    <button class="btn btn-primary" onclick="saveBudgetSettings()">Save Settings</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sponsor Budget Controls -->
+        <div class="budget-card">
+            <h2>Sponsor Budget Allocation</h2>
+            <div id="sponsor-budgets">
+                <div class="budget-grid">
+                    <div>
+                        <h3>Unami Foundation</h3>
+                        <div class="budget-meter">
+                            <div class="budget-fill low" style="width: 30%"></div>
+                        </div>
+                        <p>R1,500 / R5,000 (30%)</p>
+                        <input type="number" value="5000" placeholder="Budget limit">
+                        <button class="btn btn-success">Update</button>
+                    </div>
+                    <div>
+                        <h3>Community Fund</h3>
+                        <div class="budget-meter">
+                            <div class="budget-fill medium" style="width: 70%"></div>
+                        </div>
+                        <p>R2,100 / R3,000 (70%)</p>
+                        <input type="number" value="3000" placeholder="Budget limit">
+                        <button class="btn btn-success">Update</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Budget Alerts -->
+        <div class="budget-card">
+            <h2>Active Alerts</h2>
+            <div class="alert alert-warning">
+                <strong>Warning:</strong> Community Fund has reached 70% of monthly budget
+            </div>
+            <div class="alert alert-danger" style="display: none;" id="critical-alert">
+                <strong>Critical:</strong> Budget limit exceeded - broadcasts paused
+            </div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="budget-card">
+            <h2>Recent Transactions</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #e5e7eb;">
+                        <th style="text-align: left; padding: 0.5rem;">Date</th>
+                        <th style="text-align: left; padding: 0.5rem;">Sponsor</th>
+                        <th style="text-align: left; padding: 0.5rem;">Messages</th>
+                        <th style="text-align: left; padding: 0.5rem;">Cost</th>
+                        <th style="text-align: left; padding: 0.5rem;">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="transactions-list">
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 0.5rem;">2026-01-15</td>
+                        <td style="padding: 0.5rem;">Unami Foundation</td>
+                        <td style="padding: 0.5rem;">2,500</td>
+                        <td style="padding: 0.5rem;">R300.00</td>
+                        <td style="padding: 0.5rem;"><span style="color: #16a34a;">✓ Sent</span></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 0.5rem;">2026-01-14</td>
+                        <td style="padding: 0.5rem;">Community Fund</td>
+                        <td style="padding: 0.5rem;">1,800</td>
+                        <td style="padding: 0.5rem;">R216.00</td>
+                        <td style="padding: 0.5rem;"><span style="color: #16a34a;">✓ Sent</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function saveBudgetSettings() {
+            const settings = {
+                monthly_budget: document.getElementById('monthly-budget').value,
+                warning_threshold: document.getElementById('warning-threshold').value,
+                pause_threshold: document.getElementById('pause-threshold').value,
+                message_cost: document.getElementById('message-cost').value,
+                daily_limit: document.getElementById('daily-limit').value
+            };
+            
+            // Save to localStorage for demo
+            localStorage.setItem('budget_settings', JSON.stringify(settings));
+            alert('Budget settings saved successfully!');
+            
+            // Update display
+            updateBudgetDisplay();
+        }
+        
+        function updateBudgetDisplay() {
+            const settings = JSON.parse(localStorage.getItem('budget_settings') || '{}');
+            const monthlyBudget = settings.monthly_budget || 10000;
+            const messageCost = settings.message_cost || 0.12;
+            const used = 4500; // Demo value
+            
+            document.getElementById('global-budget').textContent = monthlyBudget;
+            document.getElementById('global-used').textContent = used;
+            document.getElementById('global-total').textContent = monthlyBudget;
+            
+            const percentage = (used / monthlyBudget) * 100;
+            const fill = document.getElementById('global-fill');
+            fill.style.width = percentage + '%';
+            
+            if (percentage > 90) {
+                fill.className = 'budget-fill high';
+            } else if (percentage > 70) {
+                fill.className = 'budget-fill medium';
+            } else {
+                fill.className = 'budget-fill low';
+            }
+            
+            // Update message calculations
+            const messagesSent = Math.floor(used / messageCost);
+            const messagesRemaining = Math.floor((monthlyBudget - used) / messageCost);
+            
+            document.getElementById('messages-sent').textContent = messagesSent.toLocaleString();
+            document.getElementById('messages-remaining').textContent = messagesRemaining.toLocaleString();
+        }
+        
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', updateBudgetDisplay);
+    </script>
+</body>
+</html>

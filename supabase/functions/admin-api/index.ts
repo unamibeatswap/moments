@@ -375,25 +375,29 @@ serve(async (req) => {
 
     // Enhanced Analytics with Revenue
     if (path.includes('/analytics/revenue') && method === 'GET') {
-      const [campaigns, revenue, budgets] = await Promise.all([
+      const [campaigns, revenue, budgets, intents] = await Promise.all([
         supabase.from('campaigns').select('*', { count: 'exact' }),
         supabase.from('revenue_events').select('revenue_amount').gte('created_at', new Date(Date.now() - 30*24*60*60*1000).toISOString()),
-        supabase.from('campaign_budgets').select('total_budget, spent_amount, revenue_generated')
+        supabase.from('campaign_budgets').select('total_budget, spent_amount'),
+        supabase.from('moment_intents').select('*').eq('channel', 'whatsapp').eq('status', 'sent')
       ])
 
       const totalRevenue = revenue.data?.reduce((sum, event) => sum + parseFloat(event.revenue_amount), 0) || 0
       const totalBudget = budgets.data?.reduce((sum, budget) => sum + parseFloat(budget.total_budget), 0) || 0
       const totalSpent = budgets.data?.reduce((sum, budget) => sum + parseFloat(budget.spent_amount), 0) || 0
-      const totalGenerated = budgets.data?.reduce((sum, budget) => sum + parseFloat(budget.revenue_generated), 0) || 0
+      const totalBroadcasts = intents.data?.length || 0
+      const avgCostPerBroadcast = totalBroadcasts > 0 ? (totalSpent / totalBroadcasts).toFixed(2) : 0
 
       return new Response(JSON.stringify({
         totalCampaigns: campaigns.count || 0,
         totalRevenue30Days: totalRevenue,
         totalBudgetAllocated: totalBudget,
         totalSpent: totalSpent,
-        totalRevenueGenerated: totalGenerated,
-        roi: totalSpent > 0 ? ((totalGenerated - totalSpent) / totalSpent * 100).toFixed(2) : 0,
-        profitMargin: totalGenerated > 0 ? ((totalGenerated - totalSpent) / totalGenerated * 100).toFixed(2) : 0
+        totalBroadcasts: totalBroadcasts,
+        avgCostPerBroadcast: avgCostPerBroadcast,
+        roi: totalSpent > 0 ? ((totalRevenue - totalSpent) / totalSpent * 100).toFixed(2) : 0,
+        profitMargin: totalRevenue > 0 ? ((totalRevenue - totalSpent) / totalRevenue * 100).toFixed(2) : 0,
+        budgetUtilization: totalBudget > 0 ? ((totalSpent / totalBudget) * 100).toFixed(1) : 0
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
@@ -453,24 +457,25 @@ serve(async (req) => {
       })
     }
 
-    // Analytics endpoint
+    // Analytics endpoint - Fixed to use intent system
     if (path.includes('/analytics') && method === 'GET') {
-      const [moments, subscribers, broadcasts] = await Promise.all([
-        supabase.from('moments').select('*', { count: 'exact' }),
+      const [moments, subscribers, intents] = await Promise.all([
+        supabase.from('moments').select('*', { count: 'exact' }).eq('status', 'broadcasted'),
         supabase.from('subscriptions').select('*', { count: 'exact' }).eq('opted_in', true),
-        supabase.from('broadcasts').select('success_count, failure_count')
+        supabase.from('moment_intents').select('status').eq('channel', 'whatsapp')
       ])
 
-      // Calculate real success rate from broadcasts
-      const totalSuccess = broadcasts.data?.reduce((sum, b) => sum + (b.success_count || 0), 0) || 0
-      const totalFailure = broadcasts.data?.reduce((sum, b) => sum + (b.failure_count || 0), 0) || 0
-      const successRate = totalSuccess + totalFailure > 0 ? Math.round((totalSuccess / (totalSuccess + totalFailure)) * 100) : 0
+      // Calculate real success rate from intents
+      const totalIntents = intents.data?.length || 0
+      const successfulIntents = intents.data?.filter(i => i.status === 'sent').length || 0
+      const successRate = totalIntents > 0 ? Math.round((successfulIntents / totalIntents) * 100) : 0
 
       return new Response(JSON.stringify({
         totalMoments: moments.count || 0,
         activeSubscribers: subscribers.count || 0,
-        totalBroadcasts: broadcasts.count || 0,
-        successRate: successRate
+        totalBroadcasts: successfulIntents,
+        successRate: successRate,
+        totalIntents: totalIntents
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
