@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/css/admin-header.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; line-height: 1.5; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; line-height: 1.5; opacity: 0; transition: opacity 0.3s ease; }
         
         /* Top Navigation */
         .top-nav { background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 200; }
@@ -46,9 +46,24 @@
         .form-group label { display: block; margin-bottom: 0.25rem; font-weight: 500; font-size: 0.875rem; }
         .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 1rem; }
         .form-group textarea { min-height: 100px; resize: vertical; }
-        .btn { background: #2563eb; color: white; border: none; padding: 0.75rem 1rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; }
-        .btn:hover { background: #1d4ed8; }
+        .btn { background: #2563eb; color: white; border: none; padding: 0.75rem 1rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: all 0.1s; display: inline-flex; align-items: center; gap: 0.5rem; position: relative; }
+        .btn:hover { background: #1d4ed8; transform: translateY(-1px); }
+        .btn:active { transform: translateY(0); }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn.loading { pointer-events: none; }
+        .btn.loading::after { content: ''; position: absolute; width: 16px; height: 16px; border: 2px solid transparent; border-top: 2px solid currentColor; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+        
+        /* Fast click feedback */
+        .btn:active { transform: translateY(0) scale(0.98); }
+        .nav button:active { transform: scale(0.95); }
+        
+        /* Optimized transitions */
+        .nav button { transition: all 0.1s ease; }
+        .moment-item { transition: box-shadow 0.1s ease; }
+        .moment-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .btn-sm { padding: 0.5rem 0.75rem; font-size: 0.75rem; }
         .btn-danger { background: #dc2626; }
         .btn-danger:hover { background: #b91c1c; }
@@ -341,7 +356,7 @@
             <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                     <h2>Analytics Overview</h2>
-                    <button class="btn btn-sm" onclick="refreshDashboardAnalytics()">🔄 Refresh</button>
+                    <button class="btn btn-sm" onclick="refreshDashboardAnalytics(this)">🔄 Refresh</button>
                 </div>
                 <div id="analytics" class="analytics-grid">
                     <div class="loading">Loading analytics...</div>
@@ -1063,12 +1078,12 @@
                         </div>
                         <small style="color: #6b7280;">Upload organization logo (recommended: 200x100px)</small>
                     </div>
-                    <button class="btn" onclick="uploadLogo()">Update Logo</button>
+                    <button class="btn" onclick="uploadLogo(this)">Update Logo</button>
                 </div>
                 
                 <div style="margin-top: 1rem;">
                     <button class="btn" onclick="saveSettings()">Save Settings</button>
-                    <button class="btn btn-secondary" onclick="testWebhook()" style="margin-left: 0.5rem;">Test Webhook</button>
+                    <button class="btn btn-secondary" onclick="testWebhook(this)" style="margin-left: 0.5rem;">Test Webhook</button>
                 </div>
             </div>
         </div>
@@ -1315,6 +1330,54 @@
             });
         });
         
+        // Utility functions for button states
+        function setButtonLoading(btn, loading = true) {
+            if (loading) {
+                btn.classList.add('loading');
+                btn.disabled = true;
+                btn.dataset.originalText = btn.textContent;
+                btn.textContent = btn.textContent.replace(/🔄|✏️|\+|←/, '').trim();
+            } else {
+                btn.classList.remove('loading');
+                btn.disabled = false;
+                if (btn.dataset.originalText) {
+                    btn.textContent = btn.dataset.originalText;
+                    delete btn.dataset.originalText;
+                }
+            }
+        }
+        
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = type;
+            notification.textContent = message;
+            notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 1001; padding: 1rem; border-radius: 0.5rem; animation: slideIn 0.3s ease;';
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+        
+        // Debounced refresh function
+        let refreshTimeout;
+        function refreshDashboardAnalytics(btn) {
+            if (refreshTimeout) return; // Prevent multiple rapid clicks
+            
+            setButtonLoading(btn, true);
+            refreshTimeout = setTimeout(async () => {
+                try {
+                    await loadAnalytics();
+                    showNotification('Analytics refreshed successfully');
+                } catch (error) {
+                    showNotification('Failed to refresh analytics: ' + error.message, 'error');
+                } finally {
+                    setButtonLoading(btn, false);
+                    refreshTimeout = null;
+                }
+            }, 100); // Small delay to show loading state
+        }
+        
         // Settings functions
         function saveSettings() {
             const autoBroadcast = document.getElementById('auto-broadcast-setting').value;
@@ -1323,23 +1386,19 @@
             localStorage.setItem('admin.settings.auto_broadcast', autoBroadcast);
             localStorage.setItem('admin.settings.moderation_threshold', moderationThreshold);
             
-            // Show success notification
-            const notification = document.createElement('div');
-            notification.className = 'success';
-            notification.textContent = 'Settings saved successfully';
-            notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 1001; padding: 1rem; border-radius: 0.5rem;';
-            document.body.appendChild(notification);
-            setTimeout(() => notification.remove(), 3000);
+            showNotification('Settings saved successfully');
         }
         
-        async function uploadLogo() {
+        async function uploadLogo(btn) {
             const fileInput = document.getElementById('logo-upload');
             const file = fileInput.files[0];
             
             if (!file) {
-                alert('Please select a logo file first');
+                showNotification('Please select a logo file first', 'error');
                 return;
             }
+            
+            if (btn) setButtonLoading(btn, true);
             
             const formData = new FormData();
             formData.append('media_files', file);
@@ -1359,45 +1418,63 @@
                     document.getElementById('logo-preview-img').src = result.files[0].publicUrl;
                     document.getElementById('logo-preview').style.display = 'block';
                     
-                    const notification = document.createElement('div');
-                    notification.className = 'success';
-                    notification.textContent = 'Logo uploaded successfully';
-                    notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 1001; padding: 1rem; border-radius: 0.5rem;';
-                    document.body.appendChild(notification);
-                    setTimeout(() => notification.remove(), 3000);
+                    showNotification('Logo uploaded successfully');
                 } else {
                     throw new Error(result.error || 'Upload failed');
                 }
             } catch (error) {
-                const notification = document.createElement('div');
-                notification.className = 'error';
-                notification.textContent = 'Logo upload failed: ' + error.message;
-                notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 1001; padding: 1rem; border-radius: 0.5rem;';
-                document.body.appendChild(notification);
-                setTimeout(() => notification.remove(), 3000);
+                showNotification('Logo upload failed: ' + error.message, 'error');
+            } finally {
+                if (btn) setButtonLoading(btn, false);
             }
         }
         
-        async function testWebhook() {
+        async function testWebhook(btn) {
+            if (btn) setButtonLoading(btn, true);
             try {
                 const response = await fetch('/health');
                 if (response.ok) {
-                    const notification = document.createElement('div');
-                    notification.className = 'success';
-                    notification.textContent = 'Webhook test successful - system is responding';
-                    notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 1001; padding: 1rem; border-radius: 0.5rem;';
-                    document.body.appendChild(notification);
-                    setTimeout(() => notification.remove(), 3000);
+                    showNotification('Webhook test successful - system is responding');
                 } else {
                     throw new Error('Health check failed');
                 }
             } catch (error) {
-                const notification = document.createElement('div');
-                notification.className = 'error';
-                notification.textContent = 'Webhook test failed - connection error';
-                notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 1001; padding: 1rem; border-radius: 0.5rem;';
-                document.body.appendChild(notification);
-                setTimeout(() => notification.remove(), 3000);
+                showNotification('Webhook test failed - connection error', 'error');
+            } finally {
+                if (btn) setButtonLoading(btn, false);
+            }
+        }
+        
+        // Action handler for better organization
+        function handleAction(action, btn, event) {
+            switch (action) {
+                case 'create-moment':
+                    showSection('create');
+                    break;
+                case 'create-campaign':
+                    showSection('campaign-form-section');
+                    break;
+                case 'new-sponsor':
+                    showSection('sponsor-form-section');
+                    break;
+                case 'back-to-moments':
+                    showSection('moments');
+                    break;
+                // Add more actions as needed
+                default:
+                    console.log('Unhandled action:', action);
+            }
+        }
+        
+        // Fast section switching
+        function showSection(sectionId) {
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            // Show target section
+            const target = document.getElementById(sectionId);
+            if (target) {
+                target.classList.add('active');
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
         
@@ -1419,6 +1496,30 @@
         
         // Check authentication on page load
         document.addEventListener('DOMContentLoaded', async () => {
+            // Show page immediately
+            document.body.style.opacity = '1';
+            
+            // Event delegation for better performance
+            document.addEventListener('click', (e) => {
+                const btn = e.target.closest('button');
+                if (!btn) return;
+                
+                // Immediate visual feedback
+                if (!btn.disabled && !btn.classList.contains('loading')) {
+                    btn.style.transform = 'translateY(0) scale(0.98)';
+                    setTimeout(() => {
+                        btn.style.transform = '';
+                    }, 100);
+                }
+                
+                // Handle specific actions
+                const action = btn.dataset.action;
+                if (action) {
+                    e.preventDefault();
+                    handleAction(action, btn, e);
+                }
+            });
+            
             // Mobile navigation toggle
             document.getElementById('top-nav-toggle').addEventListener('click', () => {
                 document.getElementById('top-nav-links').classList.toggle('active');
@@ -1515,8 +1616,11 @@
                 
                 console.log('Auth successful, initializing admin interface');
                 
-                // Initialize the admin interface with parallel loading
-                await Promise.allSettled([
+                // Show interface immediately, load data in background
+                document.body.style.opacity = '1';
+                
+                // Initialize the admin interface with non-blocking parallel loading
+                const loadPromises = [
                     loadAnalytics().catch(e => {
                         console.warn('Analytics load failed:', e.message);
                         const analytics = document.getElementById('analytics');
@@ -1531,20 +1635,19 @@
                         console.warn('Pipeline status load failed:', e.message);
                         const pipelineStatus = document.getElementById('pipeline-status');
                         if (pipelineStatus) pipelineStatus.innerHTML = '<div class="error">Failed to load pipeline status</div>';
+                    }),
+                    loadSponsors().catch(e => {
+                        console.warn('Sponsors load failed:', e.message);
+                    }),
+                    loadSettings().catch(e => {
+                        console.warn('Settings load failed:', e.message);
                     })
-                ]);
+                ];
                 
-                try {
-                    await loadSponsors();
-                } catch (e) {
-                    console.warn('Sponsors load failed:', e.message);
-                }
-                
-                try {
-                    await loadSettings();
-                } catch (e) {
-                    console.warn('Settings load failed:', e.message);
-                }
+                // Don't await - let them load in background
+                Promise.allSettled(loadPromises).then(() => {
+                    console.log('Background loading completed');
+                });
                 
             } catch (error) {
                 console.error('Auth error:', error);

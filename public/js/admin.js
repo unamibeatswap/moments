@@ -9,22 +9,44 @@ function getAuthToken() {
 }
 
 // API fetch with auth
+// Debounced API calls to prevent multiple rapid requests
+const apiCallCache = new Map();
+const pendingCalls = new Map();
+
 async function apiFetch(path, opts = {}) {
     opts.headers = opts.headers || {};
     const token = getAuthToken();
     if (token) opts.headers['Authorization'] = `Bearer ${token}`;
     
     const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
-    const response = await fetch(url, opts);
+    const cacheKey = `${opts.method || 'GET'}_${url}`;
     
-    if (response.status === 401) {
-        console.warn('Authentication failed, clearing tokens');
-        localStorage.removeItem('admin.auth.token');
-        localStorage.removeItem('admin.user.info');
-        throw new Error('Authentication expired');
+    // Return pending call if one exists
+    if (pendingCalls.has(cacheKey)) {
+        return pendingCalls.get(cacheKey);
     }
     
-    return response;
+    // Create the fetch promise
+    const fetchPromise = fetch(url, opts).then(response => {
+        pendingCalls.delete(cacheKey);
+        
+        if (response.status === 401) {
+            console.warn('Authentication failed, clearing tokens');
+            localStorage.removeItem('admin.auth.token');
+            localStorage.removeItem('admin.user.info');
+            throw new Error('Authentication expired');
+        }
+        
+        return response;
+    }).catch(error => {
+        pendingCalls.delete(cacheKey);
+        throw error;
+    });
+    
+    // Store pending call
+    pendingCalls.set(cacheKey, fetchPromise);
+    
+    return fetchPromise;
 }
 
 let currentPage = 1;
@@ -33,37 +55,72 @@ let filteredMoments = [];
 let confirmCallback = null;
 
 // Navigation
+// Fast section switching with immediate UI update
 function showSection(sectionId) {
+    // Immediate UI update
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.admin-nav-item').forEach(b => b.classList.remove('active'));
-    document.getElementById(sectionId).classList.add('active');
     
+    const targetSection = document.getElementById(sectionId);
     const navButton = document.querySelector(`[data-section="${sectionId}"]`);
-    if (navButton) navButton.classList.add('active');
     
-    switch(sectionId) {
-        case 'dashboard': loadAnalytics(); loadRecentActivity(); loadPipelineStatus(); break;
-        case 'moments': loadMoments(); break;
-        case 'campaigns': loadCampaigns(); break;
-        case 'sponsors': loadSponsors(); break;
-        case 'subscribers': loadSubscribers(); break;
-        case 'users': loadAdminUsers(); break;
-        case 'broadcasts': loadBroadcasts(); break;
-        case 'moderation': loadModeration(); break;
-        case 'settings': loadSettings(); break;
-        case 'create': loadSponsors(); break;
+    if (targetSection) {
+        targetSection.classList.add('active');
+        targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+    
+    if (navButton) {
+        navButton.classList.add('active');
+    }
+    
+    // Load data asynchronously without blocking UI
+    setTimeout(() => {
+        switch(sectionId) {
+            case 'dashboard': 
+                Promise.all([
+                    loadAnalytics().catch(console.warn), 
+                    loadRecentActivity().catch(console.warn), 
+                    loadPipelineStatus().catch(console.warn)
+                ]);
+                break;
+            case 'moments': loadMoments().catch(console.warn); break;
+            case 'campaigns': loadCampaigns().catch(console.warn); break;
+            case 'sponsors': loadSponsors().catch(console.warn); break;
+            case 'subscribers': loadSubscribers().catch(console.warn); break;
+            case 'users': loadAdminUsers().catch(console.warn); break;
+            case 'broadcasts': loadBroadcasts().catch(console.warn); break;
+            case 'moderation': loadModeration().catch(console.warn); break;
+            case 'settings': loadSettings().catch(console.warn); break;
+            case 'create': loadSponsors().catch(console.warn); break;
+        }
+    }, 0);
 }
 
 // Event delegation for all interactions
+// Optimized event delegation with immediate feedback
 document.addEventListener('click', (e) => {
-    const action = e.target.getAttribute('data-action');
-    const section = e.target.getAttribute('data-section');
+    const btn = e.target.closest('button');
+    if (!btn || btn.disabled) return;
+    
+    // Immediate visual feedback for all buttons
+    btn.style.transform = 'scale(0.95)';
+    setTimeout(() => {
+        btn.style.transform = '';
+    }, 100);
+    
+    const action = btn.getAttribute('data-action');
+    const section = btn.getAttribute('data-section');
     
     if (section) {
+        e.preventDefault();
         showSection(section);
     } else if (action) {
-        handleAction(action, e.target);
+        e.preventDefault();
+        // Don't await - let it run async
+        handleAction(action, btn).catch(error => {
+            console.error('Action error:', error);
+            showError('Action failed: ' + error.message);
+        });
     }
 });
 
@@ -88,94 +145,108 @@ document.addEventListener('input', (e) => {
     }
 });
 
-function handleAction(action, element) {
+// Async action handler with immediate feedback
+async function handleAction(action, element) {
     const id = element.getAttribute('data-id');
     
-    switch(action) {
-        case 'create-moment':
-            showSection('create');
-            break;
-        case 'back-to-moments':
-            showSection('moments');
-            break;
-        case 'reset-form':
-            resetForm();
-            break;
-        case 'reset-campaign-form':
-            document.getElementById('campaign-form').reset();
-            break;
-        case 'reset-sponsor-form':
-            document.getElementById('sponsor-form').reset();
-            break;
-        case 'new-sponsor':
-            openSponsorModal();
-            break;
-        case 'close-sponsor-modal':
-        case 'cancel-sponsor':
-        case 'close-sponsor-form':
-            closeSponsorModal();
-            break;
-        case 'close-confirm-modal':
-        case 'cancel-confirm':
-            closeConfirmModal();
-            break;
-        case 'confirm-action':
-            confirmAction();
-            break;
-        case 'broadcast':
-            broadcastMoment(id);
-            break;
-        case 'edit':
-            editMoment(id);
-            break;
-        case 'delete':
-            deleteMoment(id);
-            break;
-        case 'edit-sponsor':
-            editSponsor(id);
-            break;
-        case 'delete-sponsor':
-            deleteSponsor(id);
-            break;
-        case 'create-campaign':
-            openCampaignModal();
-            break;
-        case 'close-campaign-modal':
-        case 'cancel-campaign':
-        case 'close-campaign-form':
-            closeCampaignModal();
-            break;
-        case 'new-admin-user':
-            openAdminUserModal();
-            break;
-        case 'close-admin-user-modal':
-        case 'cancel-admin-user':
-            closeAdminUserModal();
-            break;
-        case 'edit-campaign':
-            editCampaign(id);
-            break;
-        case 'activate-campaign':
-            activateCampaign(id);
-            break;
-        case 'flag-message':
-            flagMessage(id);
-            break;
-        case 'approve-message':
-            approveMessage(id);
-            break;
-        case 'approve-comment':
-            approveComment(id);
-            break;
-        case 'feature-comment':
-            featureComment(id);
-            break;
-        case 'delete-comment':
-            deleteComment(id);
-            break;
-        case 'preview-message':
-            previewMessage(id);
-            break;
+    // Immediate loading state for async actions
+    const asyncActions = ['broadcast', 'delete', 'edit', 'flag-message', 'approve-message'];
+    if (asyncActions.includes(action)) {
+        setButtonLoading(element, true);
+    }
+    
+    try {
+        switch(action) {
+            case 'create-moment':
+                showSection('create');
+                break;
+            case 'back-to-moments':
+                showSection('moments');
+                break;
+            case 'reset-form':
+                resetForm();
+                break;
+            case 'reset-campaign-form':
+                document.getElementById('campaign-form').reset();
+                break;
+            case 'reset-sponsor-form':
+                document.getElementById('sponsor-form').reset();
+                break;
+            case 'new-sponsor':
+                openSponsorModal();
+                break;
+            case 'close-sponsor-modal':
+            case 'cancel-sponsor':
+            case 'close-sponsor-form':
+                closeSponsorModal();
+                break;
+            case 'close-confirm-modal':
+            case 'cancel-confirm':
+                closeConfirmModal();
+                break;
+            case 'confirm-action':
+                confirmAction();
+                break;
+            case 'broadcast':
+                await broadcastMoment(id);
+                break;
+            case 'edit':
+                await editMoment(id);
+                break;
+            case 'delete':
+                await deleteMoment(id);
+                break;
+            case 'edit-sponsor':
+                await editSponsor(id);
+                break;
+            case 'delete-sponsor':
+                await deleteSponsor(id);
+                break;
+            case 'create-campaign':
+                openCampaignModal();
+                break;
+            case 'close-campaign-modal':
+            case 'cancel-campaign':
+            case 'close-campaign-form':
+                closeCampaignModal();
+                break;
+            case 'new-admin-user':
+                openAdminUserModal();
+                break;
+            case 'close-admin-user-modal':
+            case 'cancel-admin-user':
+                closeAdminUserModal();
+                break;
+            case 'edit-campaign':
+                await editCampaign(id);
+                break;
+            case 'activate-campaign':
+                await activateCampaign(id);
+                break;
+            case 'flag-message':
+                await flagMessage(id);
+                break;
+            case 'approve-message':
+                await approveMessage(id);
+                break;
+            case 'approve-comment':
+                await approveComment(id);
+                break;
+            case 'feature-comment':
+                await featureComment(id);
+                break;
+            case 'delete-comment':
+                await deleteComment(id);
+                break;
+            case 'preview-message':
+                previewMessage(id);
+                break;
+        }
+    } finally {
+        // Always reset loading state
+        if (asyncActions.includes(action)) {
+            setButtonLoading(element, false);
+        }
     }
 }
 
@@ -549,15 +620,21 @@ function deleteMoment(id) {
 }
 
 // Broadcast moment
+// Optimized broadcast with immediate feedback
 async function broadcastMoment(momentId) {
     showConfirm('Broadcast this moment now?', async () => {
         const broadcastBtn = document.querySelector(`[data-action="broadcast"][data-id="${momentId}"]`);
-        if (broadcastBtn) {
-            setButtonLoading(broadcastBtn, true);
-            broadcastBtn.textContent = 'Broadcasting...';
-        }
         
         try {
+            // Immediate UI feedback
+            if (broadcastBtn) {
+                setButtonLoading(broadcastBtn, true);
+                broadcastBtn.textContent = 'Broadcasting...';
+            }
+            
+            // Show optimistic UI update
+            showSuccess('Broadcasting moment... This may take a few seconds.');
+            
             const response = await apiFetch(`/moments/${momentId}/broadcast`, {
                 method: 'POST'
             });
@@ -565,9 +642,24 @@ async function broadcastMoment(momentId) {
             const result = await response.json();
             if (response.ok) {
                 showSuccess('Moment broadcasted successfully!');
-                // Reload moments to update status
-                await loadMoments(currentPage);
-                loadAnalytics();
+                
+                // Update UI optimistically
+                const momentItem = broadcastBtn?.closest('.moment-item');
+                if (momentItem) {
+                    const statusBadge = momentItem.querySelector('.status-badge');
+                    if (statusBadge) {
+                        statusBadge.textContent = 'broadcasted';
+                        statusBadge.className = 'status-badge status-broadcasted';
+                    }
+                    // Remove broadcast button
+                    if (broadcastBtn) broadcastBtn.remove();
+                }
+                
+                // Reload data in background
+                setTimeout(() => {
+                    loadMoments(currentPage).catch(console.warn);
+                    loadAnalytics().catch(console.warn);
+                }, 1000);
             } else {
                 showError(result.error || 'Failed to broadcast moment');
             }
@@ -577,7 +669,6 @@ async function broadcastMoment(momentId) {
         } finally {
             if (broadcastBtn) {
                 setButtonLoading(broadcastBtn, false);
-                broadcastBtn.textContent = '📡 Broadcast Now';
             }
         }
     });
@@ -1483,7 +1574,11 @@ function showError(message) {
     showNotification(message, 'error');
 }
 
+// Optimized notification system
 function showNotification(message, type) {
+    // Remove existing notifications to prevent stacking
+    document.querySelectorAll('.notification').forEach(n => n.remove());
+    
     const notification = document.createElement('div');
     notification.className = `${type} notification`;
     notification.textContent = message;
@@ -1496,25 +1591,53 @@ function showNotification(message, type) {
         border-radius: 0.5rem;
         font-weight: 500;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        animation: slideIn 0.3s ease;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        max-width: 300px;
+        word-wrap: break-word;
     `;
     
     document.body.appendChild(notification);
     
+    // Trigger animation
+    requestAnimationFrame(() => {
+        notification.style.transform = 'translateX(0)';
+    });
+    
+    // Auto-remove
     setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
+        notification.style.transform = 'translateX(100%)';
         setTimeout(() => notification.remove(), 300);
-    }, 3000);
+    }, type === 'error' ? 5000 : 3000);
 }
 
+// Optimized button loading with immediate feedback
 function setButtonLoading(button, loading) {
+    if (!button) return;
+    
     if (loading) {
+        // Immediate visual feedback
+        button.style.transform = 'scale(0.95)';
         button.disabled = true;
+        button.classList.add('loading');
         button.dataset.originalText = button.textContent;
-        button.innerHTML = '<span style="display:inline-block;width:12px;height:12px;border:2px solid #fff;border-top:2px solid transparent;border-radius:50%;animation:spin 1s linear infinite;margin-right:8px;"></span>Loading...';
+        
+        // Use CSS animation instead of innerHTML manipulation
+        const text = button.textContent.replace(/🔄|✏️|\+|←|📡|🗑️|✅|🚫|👁️/g, '').trim();
+        button.textContent = text;
+        
+        // Reset transform after brief moment
+        setTimeout(() => {
+            button.style.transform = '';
+        }, 100);
     } else {
         button.disabled = false;
-        button.textContent = button.dataset.originalText || button.textContent;
+        button.classList.remove('loading');
+        button.style.transform = '';
+        if (button.dataset.originalText) {
+            button.textContent = button.dataset.originalText;
+            delete button.dataset.originalText;
+        }
     }
 }
 
