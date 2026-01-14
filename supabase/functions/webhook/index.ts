@@ -373,8 +373,7 @@ serve(async (req) => {
                 const { data: comment } = await supabase.from('comments').insert({
                   moment_id: whatsappComment.moment_id,
                   from_number: message.from,
-                  content: message.text?.body || '',
-                  moderation_status: 'pending'
+                  content: message.text?.body || ''
                 }).select().single()
                 
                 if (comment) {
@@ -387,8 +386,8 @@ serve(async (req) => {
                     media_type: 'text'
                   })
                   
-                  await sendWhatsAppMessage(message.from, '💬 Comment received! It will be reviewed and published soon.')
-                  console.log('Comment created from WhatsApp reply')
+                  await sendWhatsAppMessage(message.from, '✅ Comment published! View at moments.unamifoundation.org/moments')
+                  console.log('Comment auto-approved and published')
                 }
               }
             } else {
