@@ -205,7 +205,7 @@ serve(async (req) => {
     }
 
     // Get user role endpoint (requires auth header)
-    if (path.includes('/user-role') && method === 'GET') {
+    if ((path.includes('/user-role') || path.includes('/admin/user-role')) && method === 'GET') {
       const authHeader = req.headers.get('Authorization')
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), {
