@@ -2053,7 +2053,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const sponsorForm = document.getElementById('sponsor-form');
+    const sponsorForm = document.getElementById('sponsor-form-modal');
     const sponsorFormInline = document.getElementById('sponsor-form-inline');
     
     [sponsorForm, sponsorFormInline].filter(f => f).forEach(form => {
@@ -2165,7 +2165,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const campaignForm = document.getElementById('campaign-form');
+    const campaignForm = document.getElementById('campaign-form-modal');
     const campaignFormInline = document.getElementById('campaign-form-inline');
     
     [campaignForm, campaignFormInline].filter(f => f).forEach(form => {
@@ -2178,7 +2178,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = Object.fromEntries(formData);
             const isEdit = !!data.id;
             
-            // Handle media files first
             const mediaFiles = formData.getAll('campaign_media');
             let mediaUrls = [];
             

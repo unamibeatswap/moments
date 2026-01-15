@@ -1171,8 +1171,8 @@
                 <button class="close-btn" data-action="close-campaign-modal">&times;</button>
             </div>
             <div id="campaign-message"></div>
-            <form id="campaign-form">
-                <input type="hidden" id="campaign-edit-id" name="id">
+            <form id="campaign-form-modal">
+                <input type="hidden" id="campaign-edit-id-modal" name="id">
                 <div class="form-group">
                     <label>Campaign Title *</label>
                     <input type="text" name="title" required placeholder="Campaign title">
@@ -1183,7 +1183,7 @@
                 </div>
                 <div class="form-group">
                     <label>Sponsor</label>
-                    <select name="sponsor_id" id="campaign-sponsor-select">
+                    <select name="sponsor_id" id="campaign-sponsor-select-modal">
                         <option value="">No Sponsor</option>
                     </select>
                 </div>
@@ -1213,7 +1213,7 @@
                 </div>
                 <div class="form-group">
                     <label>Primary Category *</label>
-                    <select name="primary_category" required id="campaign-category-select">
+                    <select name="primary_category" required id="campaign-category-select-modal">
                         <option value="">Select Primary Category</option>
                         <optgroup label="✅ Safe Categories (Low Risk)">
                             <option value="Community Education">📚 Community Education</option>
@@ -1261,7 +1261,7 @@
                 </div>
                 <div class="form-group">
                     <label>Campaign Media (optional)</label>
-                    <input type="file" name="campaign_media" id="campaign_media" multiple accept="image/*,video/*,audio/*">
+                    <input type="file" name="campaign_media" id="campaign_media_modal" multiple accept="image/*,video/*,audio/*">
                     <small style="color: #6b7280;">Upload images, videos, or audio for the campaign</small>
                 </div>
                 <div class="form-group">
@@ -1270,7 +1270,7 @@
                 </div>
                 <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
                     <button type="button" class="btn btn-secondary" data-action="cancel-campaign">Cancel</button>
-                    <button type="submit" class="btn" id="campaign-submit-btn">Create Campaign</button>
+                    <button type="submit" class="btn" id="campaign-submit-btn-modal">Create Campaign</button>
                 </div>
             </form>
         </div>
@@ -1282,8 +1282,8 @@
                 <button class="close-btn" data-action="close-sponsor-modal">&times;</button>
             </div>
             <div id="sponsor-message"></div>
-            <form id="sponsor-form">
-                <input type="hidden" id="sponsor-edit-id" name="id">
+            <form id="sponsor-form-modal">
+                <input type="hidden" id="sponsor-edit-id-modal" name="id">
                 <div class="form-group">
                     <label>Name *</label>
                     <input type="text" name="name" required placeholder="sponsor_name">
@@ -1303,7 +1303,7 @@
                 </div>
                 <div class="form-group">
                     <label>Logo Upload</label>
-                    <input type="file" name="logo_file" id="sponsor-logo-file" accept="image/*">
+                    <input type="file" name="logo_file" id="sponsor-logo-file-modal" accept="image/*">
                     <div id="sponsor-logo-preview" style="display: none; margin-top: 0.5rem; padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background: #f8fafc;">
                         <div style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Selected Logo:</div>
                         <div id="sponsor-logo-preview-list"></div>
@@ -1318,7 +1318,7 @@
                 </div>
                 <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
                     <button type="button" class="btn btn-secondary" data-action="cancel-sponsor">Cancel</button>
-                    <button type="submit" class="btn" id="sponsor-submit-btn">Create Sponsor</button>
+                    <button type="submit" class="btn" id="sponsor-submit-btn-modal">Create Sponsor</button>
                 </div>
             </form>
         </div>
