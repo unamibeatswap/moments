@@ -1080,14 +1080,27 @@ serve(async (req) => {
     // Update campaign
     if (path.match(/\/campaigns\/[a-f0-9-]{36}$/) && method === 'PUT' && body) {
       const campaignId = path.split('/campaigns/')[1]
+      
+      // Filter only valid campaign fields
+      const validFields = ['title', 'content', 'category', 'sponsor_id', 'budget', 'target_regions', 'target_categories', 'media_urls', 'scheduled_at', 'status']
+      const updateData = {}
+      validFields.forEach(field => {
+        if (body[field] !== undefined) {
+          updateData[field] = body[field]
+        }
+      })
+      
+      console.log('📝 Updating campaign:', campaignId, updateData)
+      
       const { data, error } = await supabase
         .from('campaigns')
-        .update(body)
+        .update(updateData)
         .eq('id', campaignId)
         .select()
         .single()
 
       if (error) {
+        console.error('❌ Campaign update error:', error)
         return new Response(JSON.stringify({ error: error.message }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
