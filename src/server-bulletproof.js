@@ -1195,30 +1195,133 @@ app.put('/admin/campaigns/:id', authenticateAdmin, async (req, res) => {
   }
 });
 
-// Activate campaign endpoint
+// Activate campaign endpoint - FIXED to actually broadcast
 app.post('/admin/campaigns/:id/activate', authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
-    const { data, error } = await supabase
+    // Get campaign details first
+    const { data: campaign, error: campaignError } = await supabase
+      .from('campaigns')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (campaignError || !campaign) {
+      return res.status(404).json({ error: 'Campaign not found' });
+    }
+    
+    // Get active subscribers
+    const { data: subscribers } = await supabase
+      .from('subscriptions')
+      .select('phone_number')
+      .eq('opted_in', true);
+    
+    const recipientCount = subscribers?.length || 0;
+    
+    if (recipientCount === 0) {
+      return res.status(400).json({ error: 'No active subscribers to broadcast to' });
+    }
+    
+    // Create broadcast record
+    const { data: broadcast, error: broadcastError } = await supabase
+      .from('broadcasts')
+      .insert({
+        campaign_id: id,
+        recipient_count: recipientCount,
+        success_count: 0,
+        failure_count: 0,
+        status: 'pending',
+        broadcast_started_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    
+    if (broadcastError) {
+      console.error('Broadcast creation error:', broadcastError);
+      return res.status(500).json({ error: broadcastError.message });
+    }
+    
+    // Update campaign status
+    await supabase
       .from('campaigns')
       .update({ 
         status: 'active',
         activated_at: new Date().toISOString()
       })
-      .eq('id', id)
-      .select()
-      .single();
+      .eq('id', id);
     
-    if (error) {
-      console.error('Supabase error:', error);
-      return res.status(500).json({ error: error.message });
+    // Format broadcast message
+    const sponsorText = campaign.sponsor_id && campaign.sponsors?.display_name 
+      ? `\n\nBrought to you by ${campaign.sponsors.display_name}` 
+      : '';
+    
+    const broadcastMessage = `📢 Unami Foundation Campaign\n\n${campaign.title}\n\n${campaign.content}${sponsorText}\n\n🌐 More: moments.unamifoundation.org`;
+    
+    // Create batches for parallel processing
+    const batchSize = 50;
+    const batches = [];
+    const phoneNumbers = subscribers.map(s => s.phone_number);
+    
+    for (let i = 0; i < phoneNumbers.length; i += batchSize) {
+      batches.push(phoneNumbers.slice(i, i + batchSize));
     }
+    
+    console.log(`📡 Creating ${batches.length} batches for campaign broadcast`);
+    
+    // Create batch records
+    const batchRecords = [];
+    for (let i = 0; i < batches.length; i++) {
+      const { data: batchRecord } = await supabase
+        .from('broadcast_batches')
+        .insert({
+          broadcast_id: broadcast.id,
+          batch_number: i + 1,
+          recipients: batches[i],
+          status: 'pending'
+        })
+        .select()
+        .single();
+      
+      if (batchRecord) batchRecords.push(batchRecord);
+    }
+    
+    // Update broadcast with batch info
+    await supabase
+      .from('broadcasts')
+      .update({
+        status: 'processing',
+        batches_total: batches.length,
+        batches_completed: 0
+      })
+      .eq('id', broadcast.id);
+    
+    // Trigger batch processors
+    for (const batchRecord of batchRecords) {
+      try {
+        await fetch(`${process.env.SUPABASE_URL}/functions/v1/broadcast-batch-processor`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            batch_id: batchRecord.id,
+            message: broadcastMessage
+          })
+        });
+      } catch (error) {
+        console.error(`Failed to trigger batch ${batchRecord.batch_number}:`, error.message);
+      }
+    }
+    
+    console.log(`✅ Campaign broadcast triggered: ${batchRecords.length} batches`);
     
     res.json({ 
       success: true, 
-      message: 'Campaign activated successfully',
-      data
+      broadcast_id: broadcast.id,
+      message: `Campaign "${campaign.title}" broadcasted to ${recipientCount} subscribers`,
+      recipient_count: recipientCount
     });
     
   } catch (error) {
