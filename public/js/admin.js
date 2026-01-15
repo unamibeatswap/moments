@@ -1714,42 +1714,50 @@ async function editCampaign(id) {
         const data = await response.json();
         const campaign = data.campaign;
         
+        // Determine which form to use (modal or inline based on screen size)
+        const isMobile = window.innerWidth <= 768;
+        const formId = isMobile ? 'campaign-form-inline' : 'campaign-form-modal';
+        const editIdField = isMobile ? 'campaign-edit-id-inline' : 'campaign-edit-id-modal';
+        
         // Populate form
-        document.getElementById('campaign-edit-id').value = id;
-        document.querySelector('#campaign-form [name="title"]').value = campaign.title || '';
-        document.querySelector('#campaign-form [name="content"]').value = campaign.content || '';
-        document.querySelector('#campaign-form [name="sponsor_id"]').value = campaign.sponsor_id || '';
-        document.querySelector('#campaign-form [name="budget"]').value = campaign.budget || '';
+        document.getElementById(editIdField).value = id;
+        document.querySelector(`#${formId} [name="title"]`).value = campaign.title || '';
+        document.querySelector(`#${formId} [name="content"]`).value = campaign.content || '';
+        document.querySelector(`#${formId} [name="sponsor_id"]`).value = campaign.sponsor_id || '';
+        document.querySelector(`#${formId} [name="budget"]`).value = campaign.budget || '';
         
         // Handle regions and categories
         if (campaign.target_regions && campaign.target_regions.length > 0) {
-            document.querySelector('#campaign-form [name="primary_region"]').value = campaign.target_regions[0];
+            document.querySelector(`#${formId} [name="primary_region"]`).value = campaign.target_regions[0];
             // Check additional regions
             campaign.target_regions.slice(1).forEach(region => {
-                const checkbox = document.querySelector(`#campaign-form input[name="target_regions"][value="${region}"]`);
+                const checkbox = document.querySelector(`#${formId} input[name="target_regions"][value="${region}"]`);
                 if (checkbox) checkbox.checked = true;
             });
         }
         
         if (campaign.target_categories && campaign.target_categories.length > 0) {
-            document.querySelector('#campaign-form [name="primary_category"]').value = campaign.target_categories[0];
+            document.querySelector(`#${formId} [name="primary_category"]`).value = campaign.target_categories[0];
             // Check additional categories
             campaign.target_categories.slice(1).forEach(category => {
-                const checkbox = document.querySelector(`#campaign-form input[name="target_categories"][value="${category}"]`);
+                const checkbox = document.querySelector(`#${formId} input[name="target_categories"][value="${category}"]`);
                 if (checkbox) checkbox.checked = true;
             });
         }
         
         if (campaign.scheduled_at) {
             const date = new Date(campaign.scheduled_at);
-            document.querySelector('#campaign-form [name="scheduled_at"]').value = date.toISOString().slice(0, 16);
+            document.querySelector(`#${formId} [name="scheduled_at"]`).value = date.toISOString().slice(0, 16);
         }
         
-        // Update modal title and button
-        document.getElementById('campaign-modal-title').textContent = 'Edit Campaign';
-        document.getElementById('campaign-submit-btn').textContent = 'Update Campaign';
-        
-        openCampaignModal();
+        // Update modal/form title and button
+        if (isMobile) {
+            openCampaignModal(); // This will show the inline form on mobile
+        } else {
+            document.getElementById('campaign-modal-title').textContent = 'Edit Campaign';
+            document.getElementById('campaign-submit-btn-modal').textContent = 'Update Campaign';
+            openCampaignModal();
+        }
     } catch (error) {
         showError('Failed to load campaign: ' + error.message);
     }
