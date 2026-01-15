@@ -1606,9 +1606,15 @@ serve(async (req) => {
       // Use campaign category directly (no mapping needed with expanded categories)
       const campaignCategory = Array.isArray(campaign.target_categories) ? campaign.target_categories[0] : 'General'
       
+      // Ensure content meets minimum length (10 chars)
+      let momentContent = campaign.content
+      if (momentContent.length < 10) {
+        momentContent = momentContent + ' - ' + campaign.title
+      }
+      
       const momentData = {
         title: campaign.title,
-        content: campaign.content,
+        content: momentContent,
         region: Array.isArray(campaign.target_regions) ? campaign.target_regions[0] : 'National',
         category: campaignCategory,
         sponsor_id: campaign.sponsor_id || null,
