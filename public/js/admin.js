@@ -222,6 +222,7 @@ async function handleAction(action, element) {
                 break;
             case 'close-admin-user-modal':
             case 'cancel-admin-user':
+            case 'close-admin-user-form':
                 closeAdminUserModal();
                 break;
             case 'edit-campaign':
@@ -1459,41 +1460,18 @@ async function testWebhook() {
 
 // Modal/Inline Form functions - responsive to mobile
 function openSponsorModal() {
-    const isMobile = window.innerWidth <= 768;
-    if (isMobile) {
-        // On mobile, show inline form section
-        showSection('sponsor-form-section');
-    } else {
-        // On desktop, show modal
-        document.getElementById('sponsor-modal').classList.add('active');
-    }
-    document.getElementById('sponsor-form').reset();
+    showSection('sponsor-form-section');
+    document.getElementById('sponsor-form-inline').reset();
 }
 
 function closeSponsorModal() {
-    const isMobile = window.innerWidth <= 768;
-    if (isMobile) {
-        // On mobile, go back to sponsors section
-        showSection('sponsors');
-    } else {
-        // On desktop, close modal
-        document.getElementById('sponsor-modal').classList.remove('active');
-    }
-    document.getElementById('sponsor-form').reset();
+    showSection('sponsors');
+    document.getElementById('sponsor-form-inline').reset();
 }
 
 function openCampaignModal() {
-    const isMobile = window.innerWidth <= 768;
-    if (isMobile) {
-        // On mobile, show inline form section
-        showSection('campaign-form-section');
-    } else {
-        // On desktop, show modal
-        document.getElementById('campaign-modal').classList.add('active');
-    }
-    document.getElementById('campaign-form').reset();
-    
-    // Load sponsors for campaign form
+    showSection('campaign-form-section');
+    document.getElementById('campaign-form-inline').reset();
     loadSponsorsForCampaign();
 }
 
@@ -1513,25 +1491,18 @@ async function loadSponsorsForCampaign() {
 }
 
 function closeCampaignModal() {
-    const isMobile = window.innerWidth <= 768;
-    if (isMobile) {
-        // On mobile, go back to campaigns section
-        showSection('campaigns');
-    } else {
-        // On desktop, close modal
-        document.getElementById('campaign-modal').classList.remove('active');
-    }
-    document.getElementById('campaign-form').reset();
+    showSection('campaigns');
+    document.getElementById('campaign-form-inline').reset();
 }
 
 function openAdminUserModal() {
-    document.getElementById('admin-user-modal').classList.add('active');
-    document.getElementById('admin-user-form').reset();
+    showSection('admin-user-form-section');
+    document.getElementById('admin-user-form-inline').reset();
 }
 
 function closeAdminUserModal() {
-    document.getElementById('admin-user-modal').classList.remove('active');
-    document.getElementById('admin-user-form').reset();
+    showSection('users');
+    document.getElementById('admin-user-form-inline').reset();
 }
 
 function showConfirm(message, callback) {
@@ -1554,7 +1525,6 @@ function confirmAction() {
 
 async function editSponsor(id) {
     try {
-        // Get sponsor data
         const response = await apiFetch(`/sponsors/${id}`);
         if (!response.ok) {
             showError('Failed to load sponsor data');
@@ -1564,18 +1534,14 @@ async function editSponsor(id) {
         const data = await response.json();
         const sponsor = data.sponsor;
         
-        // Populate form
-        document.getElementById('sponsor-edit-id').value = id;
-        document.querySelector('#sponsor-form [name="name"]').value = sponsor.name || '';
-        document.querySelector('#sponsor-form [name="display_name"]').value = sponsor.display_name || '';
-        document.querySelector('#sponsor-form [name="contact_email"]').value = sponsor.contact_email || '';
-        document.querySelector('#sponsor-form [name="website_url"]').value = sponsor.website_url || '';
+        // Populate inline form only
+        document.getElementById('sponsor-edit-id-inline').value = id;
+        document.querySelector('#sponsor-form-inline [name="name"]').value = sponsor.name || '';
+        document.querySelector('#sponsor-form-inline [name="display_name"]').value = sponsor.display_name || '';
+        document.querySelector('#sponsor-form-inline [name="contact_email"]').value = sponsor.contact_email || '';
+        document.querySelector('#sponsor-form-inline [name="website_url"]').value = sponsor.website_url || '';
         
-        // Update modal title and button
-        document.getElementById('sponsor-modal-title').textContent = 'Edit Sponsor';
-        document.getElementById('sponsor-submit-btn').textContent = 'Update Sponsor';
-        
-        openSponsorModal();
+        showSection('sponsor-form-section');
     } catch (error) {
         showError('Failed to load sponsor: ' + error.message);
     }
@@ -1704,7 +1670,6 @@ function deleteComment(id) {
 }
 async function editCampaign(id) {
     try {
-        // Get campaign data
         const response = await apiFetch(`/campaigns/${id}`);
         if (!response.ok) {
             showError('Failed to load campaign data');
@@ -1714,50 +1679,35 @@ async function editCampaign(id) {
         const data = await response.json();
         const campaign = data.campaign;
         
-        // Determine which form to use (modal or inline based on screen size)
-        const isMobile = window.innerWidth <= 768;
-        const formId = isMobile ? 'campaign-form-inline' : 'campaign-form-modal';
-        const editIdField = isMobile ? 'campaign-edit-id-inline' : 'campaign-edit-id-modal';
+        // Populate inline form only
+        document.getElementById('campaign-edit-id-inline').value = id;
+        document.querySelector('#campaign-form-inline [name="title"]').value = campaign.title || '';
+        document.querySelector('#campaign-form-inline [name="content"]').value = campaign.content || '';
+        document.querySelector('#campaign-form-inline [name="sponsor_id"]').value = campaign.sponsor_id || '';
+        document.querySelector('#campaign-form-inline [name="budget"]').value = campaign.budget || '';
         
-        // Populate form
-        document.getElementById(editIdField).value = id;
-        document.querySelector(`#${formId} [name="title"]`).value = campaign.title || '';
-        document.querySelector(`#${formId} [name="content"]`).value = campaign.content || '';
-        document.querySelector(`#${formId} [name="sponsor_id"]`).value = campaign.sponsor_id || '';
-        document.querySelector(`#${formId} [name="budget"]`).value = campaign.budget || '';
-        
-        // Handle regions and categories
         if (campaign.target_regions && campaign.target_regions.length > 0) {
-            document.querySelector(`#${formId} [name="primary_region"]`).value = campaign.target_regions[0];
-            // Check additional regions
+            document.querySelector('#campaign-form-inline [name="primary_region"]').value = campaign.target_regions[0];
             campaign.target_regions.slice(1).forEach(region => {
-                const checkbox = document.querySelector(`#${formId} input[name="target_regions"][value="${region}"]`);
+                const checkbox = document.querySelector(`#campaign-form-inline input[name="target_regions"][value="${region}"]`);
                 if (checkbox) checkbox.checked = true;
             });
         }
         
         if (campaign.target_categories && campaign.target_categories.length > 0) {
-            document.querySelector(`#${formId} [name="primary_category"]`).value = campaign.target_categories[0];
-            // Check additional categories
+            document.querySelector('#campaign-form-inline [name="primary_category"]').value = campaign.target_categories[0];
             campaign.target_categories.slice(1).forEach(category => {
-                const checkbox = document.querySelector(`#${formId} input[name="target_categories"][value="${category}"]`);
+                const checkbox = document.querySelector(`#campaign-form-inline input[name="target_categories"][value="${category}"]`);
                 if (checkbox) checkbox.checked = true;
             });
         }
         
         if (campaign.scheduled_at) {
             const date = new Date(campaign.scheduled_at);
-            document.querySelector(`#${formId} [name="scheduled_at"]`).value = date.toISOString().slice(0, 16);
+            document.querySelector('#campaign-form-inline [name="scheduled_at"]').value = date.toISOString().slice(0, 16);
         }
         
-        // Update modal/form title and button
-        if (isMobile) {
-            openCampaignModal(); // This will show the inline form on mobile
-        } else {
-            document.getElementById('campaign-modal-title').textContent = 'Edit Campaign';
-            document.getElementById('campaign-submit-btn-modal').textContent = 'Update Campaign';
-            openCampaignModal();
-        }
+        showSection('campaign-form-section');
     } catch (error) {
         showError('Failed to load campaign: ' + error.message);
     }
@@ -2283,11 +2233,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const adminUserForm = document.getElementById('admin-user-form');
+    const adminUserForm = document.getElementById('admin-user-form-inline');
     if (adminUserForm) {
         adminUserForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const submitBtn = document.getElementById('admin-user-submit-btn');
+            const submitBtn = document.getElementById('admin-user-submit-btn-inline');
             setButtonLoading(submitBtn, true);
             
             const formData = new FormData(e.target);
