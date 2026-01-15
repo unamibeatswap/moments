@@ -122,8 +122,11 @@ serve(async (req) => {
 
     let successCount = 0
     let failureCount = 0
+    const failedRecipients = []
+    let currentRateLimit = 200 // Start with 200ms (5 msg/sec)
+    let consecutiveFailures = 0
 
-    // Process recipients with faster rate limiting
+    // Process recipients with adaptive rate limiting
     for (let i = 0; i < batch.recipients.length; i++) {
       const recipient = batch.recipients[i]
       
@@ -131,29 +134,52 @@ serve(async (req) => {
         const success = await sendWhatsAppMessage(recipient, message)
         if (success) {
           successCount++
+          consecutiveFailures = 0
+          // Speed up if successful
+          if (currentRateLimit > 150) {
+            currentRateLimit = Math.max(150, currentRateLimit - 10)
+          }
         } else {
           failureCount++
+          failedRecipients.push(recipient)
+          consecutiveFailures++
+          // Slow down if failing
+          if (consecutiveFailures > 3) {
+            currentRateLimit = Math.min(500, currentRateLimit + 50)
+            console.log(`⚠️ Adaptive rate limiting: increased to ${currentRateLimit}ms`)
+          }
         }
       } catch (error) {
         failureCount++
+        failedRecipients.push(recipient)
+        consecutiveFailures++
       }
 
-      // Rate limiting: 5 messages per second
+      // Adaptive rate limiting
       if (i < batch.recipients.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 200))
+        await new Promise(resolve => setTimeout(resolve, currentRateLimit))
       }
     }
 
-    // Update batch results
+    // Update batch results with retry info
+    const retryCount = batch.retry_count || 0
+    const shouldRetry = failureCount > 0 && retryCount < 2 && failedRecipients.length < batch.recipients.length * 0.5
+    
     await supabase
       .from('broadcast_batches')
       .update({
-        status: 'completed',
+        status: shouldRetry ? 'pending' : 'completed',
         success_count: successCount,
         failure_count: failureCount,
-        completed_at: new Date().toISOString()
+        failed_recipients: failedRecipients,
+        retry_count: retryCount + (shouldRetry ? 1 : 0),
+        completed_at: shouldRetry ? null : new Date().toISOString()
       })
       .eq('id', batch_id)
+
+    if (shouldRetry) {
+      console.log(`🔄 Batch ${batch.batch_number} will retry ${failedRecipients.length} failed recipients`)
+    }
 
     // Update broadcast progress
     const { data: broadcast } = await supabase
