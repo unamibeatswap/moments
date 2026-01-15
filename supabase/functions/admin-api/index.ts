@@ -1081,14 +1081,40 @@ serve(async (req) => {
     if (path.match(/\/campaigns\/[a-f0-9-]{36}$/) && method === 'PUT' && body) {
       const campaignId = path.split('/campaigns/')[1]
       
-      // Filter only valid campaign fields
-      const validFields = ['title', 'content', 'category', 'sponsor_id', 'budget', 'target_regions', 'target_categories', 'media_urls', 'scheduled_at', 'status']
-      const updateData = {}
-      validFields.forEach(field => {
-        if (body[field] !== undefined) {
-          updateData[field] = body[field]
+      // Clean and validate data
+      const updateData: any = {}
+      
+      if (body.title) updateData.title = body.title
+      if (body.content) updateData.content = body.content
+      if (body.category) updateData.category = body.category
+      
+      // Handle sponsor_id - convert empty string to null
+      if (body.sponsor_id !== undefined) {
+        updateData.sponsor_id = body.sponsor_id === '' ? null : body.sponsor_id
+      }
+      
+      // Handle budget - convert string to number
+      if (body.budget !== undefined) {
+        updateData.budget = typeof body.budget === 'string' ? parseFloat(body.budget) : body.budget
+      }
+      
+      // Handle arrays
+      if (body.target_regions) updateData.target_regions = body.target_regions
+      if (body.target_categories) updateData.target_categories = body.target_categories
+      if (body.media_urls) updateData.media_urls = body.media_urls
+      
+      // Handle scheduled_at - add seconds if missing, convert empty to null
+      if (body.scheduled_at !== undefined) {
+        if (body.scheduled_at === '' || body.scheduled_at === null) {
+          updateData.scheduled_at = null
+        } else {
+          // Add :00 seconds if not present
+          const dt = body.scheduled_at.includes(':00') ? body.scheduled_at : body.scheduled_at + ':00'
+          updateData.scheduled_at = dt
         }
-      })
+      }
+      
+      if (body.status) updateData.status = body.status
       
       console.log('📝 Updating campaign:', campaignId, updateData)
       
