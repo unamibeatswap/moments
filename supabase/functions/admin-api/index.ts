@@ -204,6 +204,51 @@ serve(async (req) => {
       })
     }
 
+    // Get user role endpoint (requires auth header)
+    if (path.includes('/user-role') && method === 'GET') {
+      const authHeader = req.headers.get('Authorization')
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+      return new Response(JSON.stringify({ role: 'superadmin' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Get compliance categories (requires auth header)
+    if (path.includes('/compliance/categories') && method === 'GET') {
+      const authHeader = req.headers.get('Authorization')
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      const regions = ['KZN', 'WC', 'GP', 'EC', 'FS', 'LP', 'MP', 'NC', 'NW']
+      const categories = ['Education', 'Safety', 'Culture', 'Opportunity', 'Events', 'Health', 'Technology']
+
+      const formattedCategories = [
+        ...regions.map((region, index) => ({
+          id: index + 1,
+          category_type: 'region',
+          category_name: region
+        })),
+        ...categories.map((category, index) => ({
+          id: regions.length + index + 1,
+          category_type: 'category',
+          category_name: category
+        }))
+      ]
+
+      return new Response(JSON.stringify({ categories: formattedCategories }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     // For all other endpoints, validate session token
     const authHeader = req.headers.get('Authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

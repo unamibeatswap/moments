@@ -2309,3 +2309,46 @@ function loadMoreCampaigns() {
     // For now, just show a message
     showSuccess('Load more functionality would fetch additional campaigns');
 }
+
+
+// Check campaign compliance
+async function checkCampaignCompliance() {
+    const form = document.getElementById('campaign-form-inline');
+    const content = form.querySelector('[name="content"]').value;
+    const category = form.querySelector('[name="primary_category"]').value;
+    const resultDiv = document.getElementById('campaign-compliance-result');
+    
+    if (!content) {
+        resultDiv.style.display = 'block';
+        resultDiv.style.background = '#fef2f2';
+        resultDiv.style.border = '1px solid #fca5a5';
+        resultDiv.innerHTML = '<strong style="color: #dc2626;">⚠️ Error:</strong> Please enter campaign content first';
+        return;
+    }
+    
+    try {
+        const response = await apiFetch('/compliance/check', {
+            method: 'POST',
+            body: JSON.stringify({ content, category })
+        });
+        const data = await response.json();
+        
+        if (data.compliance.approved) {
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#f0fdf4';
+            resultDiv.style.border = '1px solid #86efac';
+            resultDiv.innerHTML = `<strong style="color: #16a34a;">✅ Approved</strong><br><small>Confidence: ${(data.compliance.confidence * 100).toFixed(0)}%</small>`;
+        } else {
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#fef2f2';
+            resultDiv.style.border = '1px solid #fca5a5';
+            resultDiv.innerHTML = `<strong style="color: #dc2626;">⚠️ Review Required</strong><br><small>${data.compliance.issues.join(', ')}</small>`;
+        }
+    } catch (error) {
+        resultDiv.style.display = 'block';
+        resultDiv.style.background = '#fef2f2';
+        resultDiv.style.border = '1px solid #fca5a5';
+        resultDiv.innerHTML = '<strong style="color: #dc2626;">⚠️ Error:</strong> Compliance check failed';
+    }
+}
+window.checkCampaignCompliance = checkCampaignCompliance;
