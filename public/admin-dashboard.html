@@ -1603,10 +1603,7 @@
                 const token = localStorage.getItem('admin.auth.token');
                 const userInfo = localStorage.getItem('admin.user.info');
                 
-                console.log('Auth check:', { hasToken: !!token, hasUserInfo: !!userInfo });
-                
                 if (!token || !userInfo) {
-                    console.log('No auth found, redirecting to login');
                     window.location.href = '/login';
                     return;
                 }
@@ -1615,9 +1612,7 @@
                 let user;
                 try {
                     user = JSON.parse(userInfo);
-                    console.log('User info parsed successfully:', user.email || user.name);
                 } catch (parseError) {
-                    console.error('Invalid user info format, clearing auth');
                     localStorage.removeItem('admin.auth.token');
                     localStorage.removeItem('admin.user.info');
                     window.location.href = '/login';
@@ -1653,7 +1648,6 @@
                         if (userRoleEl) userRoleEl.textContent = 'Administrator';
                     }
                 } catch (roleError) {
-                    console.warn('Role fetch failed:', roleError.message);
                     if (userRoleEl) userRoleEl.textContent = 'Administrator';
                 }
                 
@@ -1673,7 +1667,7 @@
                                 }
                             });
                         } catch (logoutError) {
-                            console.warn('Server logout failed:', logoutError.message);
+                            // Silent fail
                         }
                         
                         // Redirect to login
@@ -1681,40 +1675,33 @@
                     });
                 }
                 
-                console.log('Auth successful, initializing admin interface');
-                
                 // Show interface immediately, load data in background
                 document.body.style.opacity = '1';
                 
                 // Initialize the admin interface with non-blocking parallel loading
                 const loadPromises = [
                     loadAnalytics().catch(e => {
-                        console.warn('Analytics load failed:', e.message);
                         const analytics = document.getElementById('analytics');
                         if (analytics) analytics.innerHTML = '<div class="error">Failed to load analytics</div>';
                     }),
                     loadRecentActivity().catch(e => {
-                        console.warn('Recent activity load failed:', e.message);
                         const recentActivity = document.getElementById('recent-activity');
                         if (recentActivity) recentActivity.innerHTML = '<div class="error">Failed to load recent activity</div>';
                     }),
                     loadPipelineStatus().catch(e => {
-                        console.warn('Pipeline status load failed:', e.message);
                         const pipelineStatus = document.getElementById('pipeline-status');
                         if (pipelineStatus) pipelineStatus.innerHTML = '<div class="error">Failed to load pipeline status</div>';
                     }),
                     loadSponsors().catch(e => {
-                        console.warn('Sponsors load failed:', e.message);
+                        // Silent fail
                     }),
                     loadSettings().catch(e => {
-                        console.warn('Settings load failed:', e.message);
+                        // Silent fail
                     })
                 ];
                 
                 // Don't await - let them load in background
-                Promise.allSettled(loadPromises).then(() => {
-                    console.log('Background loading completed');
-                });
+                Promise.allSettled(loadPromises);
                 
             } catch (error) {
                 console.error('Auth error:', error);
@@ -1727,7 +1714,7 @@
         });
     </script>
     <script src="/js/chart.min.js"></script>
-    <script src="/js/admin.js?v=1.0.1"></script>
+    <script src="/js/admin.js?v=1.0.2"></script>
     <script src="/js/admin-users.js"></script>
     <script src="/js/analytics.js"></script>
     <script src="/js/compliance.js"></script>
