@@ -1197,6 +1197,11 @@ async function loadSettings() {
 // Load budget controls with real-time data
 async function loadBudgetControls() {
     try {
+        // Load settings first
+        const settingsResponse = await apiFetch('/budget/settings');
+        const settingsData = await settingsResponse.json();
+        const settings = settingsData.settings || {};
+        
         const [budgetResponse, sponsorsResponse, transactionsResponse] = await Promise.all([
             apiFetch('/budget/overview'),
             apiFetch('/budget/sponsors'),
@@ -1225,7 +1230,7 @@ async function loadBudgetControls() {
                     </div>
                     <div>
                         <h4>Template Message Costs</h4>
-                        <p>Cost per message: R${data.message_cost}</p>
+                        <p>Cost per message: R${settings.message_cost || data.message_cost}</p>
                         <p>Messages sent: ${data.messages_sent.toLocaleString()}</p>
                         <p>Remaining: ${data.messages_remaining.toLocaleString()}</p>
                     </div>
@@ -1233,16 +1238,15 @@ async function loadBudgetControls() {
             `;
         }
         
-        // Update budget settings form
+        // Update budget settings form with dynamic values
         const budgetSettingsForm = document.getElementById('budget-settings-form');
-        if (budgetSettingsForm && budgetData.success) {
-            const settings = budgetData.settings || {};
+        if (budgetSettingsForm) {
             budgetSettingsForm.innerHTML = `
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
                     <div>
                         <div class="form-group">
                             <label>Monthly Budget Limit (R)</label>
-                            <input type="number" id="monthly-budget" value="${settings.monthly_budget || 10000}" min="1000" step="100">
+                            <input type="number" id="monthly-budget" value="${settings.monthly_budget || 3000}" min="1000" step="100">
                         </div>
                         <div class="form-group">
                             <label>Warning Threshold (%)</label>
@@ -1386,6 +1390,41 @@ function saveSettings() {
     localStorage.setItem('admin.settings.moderation_threshold', moderationThreshold);
     
     showSuccess('Settings saved successfully');
+}
+
+// Save budget settings function
+async function saveBudgetSettings() {
+    const monthlyBudget = document.getElementById('monthly-budget')?.value;
+    const warningThreshold = document.getElementById('warning-threshold')?.value;
+    const messageCost = document.getElementById('message-cost')?.value;
+    const dailyLimit = document.getElementById('daily-limit')?.value;
+    
+    if (!monthlyBudget || !warningThreshold || !messageCost || !dailyLimit) {
+        showError('Please fill in all budget settings');
+        return;
+    }
+    
+    try {
+        const response = await apiFetch('/budget/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                monthly_budget: parseFloat(monthlyBudget),
+                warning_threshold: parseInt(warningThreshold),
+                message_cost: parseFloat(messageCost),
+                daily_limit: parseFloat(dailyLimit)
+            })
+        });
+        
+        if (response.ok) {
+            showSuccess('Budget settings saved successfully');
+            loadBudgetControls();
+        } else {
+            showError('Failed to save budget settings');
+        }
+    } catch (error) {
+        showError('Failed to save budget settings: ' + error.message);
+    }
 }
 
 // Test webhook function
@@ -2103,7 +2142,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.ok) {
                     showSuccess(`Sponsor ${isEdit ? 'updated' : 'created'} successfully!`);
                     closeSponsorModal();
-                    loadSponsors();
+                    await loadSponsors();
+                    await loadSponsorsForCampaign();
                 } else {
                     // Show specific error message
                     const errorMsg = result.error || `Failed to ${isEdit ? 'update' : 'create'} sponsor`;

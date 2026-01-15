@@ -1,54 +1,84 @@
 #!/bin/bash
-# Phase 1 Critical Fixes Deployment Script
-# Run this after verifying all changes
+# Phase 1 Deployment Script
+# Deploys critical fixes for campaign activation, budget settings, and sponsor refresh
 
 set -e
 
-echo "🚀 Deploying Phase 1 Critical Fixes..."
+echo "🚀 PHASE 1 DEPLOYMENT - Critical Fixes"
+echo "======================================"
 echo ""
 
-# Step 1: Deploy MCP Advisory Function to Supabase
-echo "📊 Step 1: Deploying MCP Advisory Function..."
-echo "   → Run this SQL in Supabase SQL Editor:"
-echo "   → File: supabase/mcp_advisory_function.sql"
-echo ""
-read -p "Press Enter after deploying MCP function..."
+# Check if we're in the right directory
+if [ ! -f "package.json" ]; then
+    echo "❌ Error: Must run from project root"
+    exit 1
+fi
 
-# Step 2: Deploy updated webhook function
-echo "📡 Step 2: Deploying Webhook Function..."
-cd supabase/functions/webhook
-supabase functions deploy webhook --no-verify-jwt
-cd ../../..
-echo "✅ Webhook deployed"
+echo "📋 Pre-deployment checks..."
 echo ""
 
-# Step 3: Deploy updated admin-api function
-echo "🔧 Step 3: Deploying Admin API Function..."
-cd supabase/functions/admin-api
-supabase functions deploy admin-api --no-verify-jwt
-cd ../../..
-echo "✅ Admin API deployed"
+# Check if Supabase CLI is installed
+if ! command -v supabase &> /dev/null; then
+    echo "❌ Supabase CLI not found. Install with: npm install -g supabase"
+    exit 1
+fi
+
+echo "✅ Supabase CLI found"
 echo ""
 
-# Step 4: Verification
-echo "🧪 Step 4: Running Verification Tests..."
+# Backup current function
+echo "💾 Creating backup..."
+if [ -f "supabase/functions/admin-api/index.ts.backup" ]; then
+    rm supabase/functions/admin-api/index.ts.backup
+fi
+cp supabase/functions/admin-api/index.ts supabase/functions/admin-api/index.ts.backup
+echo "✅ Backup created: admin-api/index.ts.backup"
 echo ""
 
-# Test MCP function
-echo "Testing MCP Advisory Function..."
-curl -X POST "https://bxmdzcxejcxbinghtyfw.supabase.co/rest/v1/rpc/mcp_advisory" \
-  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4bWR6Y3hlamN4YmluZ2h0eWZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxNzMzOTYsImV4cCI6MjA4Mzc0OTM5Nn0.ccwWS_LPLjUrY8zqHD0Q7pTEamdN-QV0bv6f0B1uBUU" \
-  -H "Content-Type: application/json" \
-  -d '{"message_content":"This is a safe community message about local events"}' \
-  | jq '.'
+# Deploy admin-api function
+echo "🚀 Deploying admin-api function..."
+supabase functions deploy admin-api
+
+if [ $? -eq 0 ]; then
+    echo "✅ Admin API deployed successfully"
+else
+    echo "❌ Deployment failed"
+    echo "💾 Restoring backup..."
+    mv supabase/functions/admin-api/index.ts.backup supabase/functions/admin-api/index.ts
+    exit 1
+fi
+
+echo ""
+echo "🧪 Running post-deployment tests..."
 echo ""
 
-echo "✅ Phase 1 Deployment Complete!"
+# Test health endpoint
+echo "Testing health endpoint..."
+HEALTH_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://bxmdzcxejcxbinghtyfw.supabase.co/functions/v1/admin-api/help)
+
+if [ "$HEALTH_RESPONSE" = "200" ]; then
+    echo "✅ Health check passed"
+else
+    echo "⚠️  Health check returned: $HEALTH_RESPONSE"
+fi
+
 echo ""
-echo "📋 Next Steps:"
-echo "1. Send test message via WhatsApp to verify command filtering"
-echo "2. Check moderation panel - commands should NOT appear"
-echo "3. Send safe message - should auto-approve (risk < 0.3)"
-echo "4. Send image via WhatsApp - should download to Supabase Storage"
-echo "5. Verify pagination works on moderation, subscribers, broadcasts"
+echo "✅ PHASE 1 DEPLOYMENT COMPLETE"
+echo "======================================"
 echo ""
+echo "📝 Next Steps:"
+echo "1. Clear browser cache and reload admin dashboard"
+echo "2. Test campaign activation"
+echo "3. Test budget settings save"
+echo "4. Test sponsor creation and refresh"
+echo ""
+echo "📊 Monitoring:"
+echo "- Check Supabase logs for errors"
+echo "- Monitor browser console for issues"
+echo "- Verify no CORS errors"
+echo ""
+echo "🔄 Rollback (if needed):"
+echo "   mv supabase/functions/admin-api/index.ts.backup supabase/functions/admin-api/index.ts"
+echo "   supabase functions deploy admin-api"
+echo ""
+echo "📈 Ready for Phase 2: Dynamic Budget Values"

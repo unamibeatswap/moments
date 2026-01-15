@@ -948,7 +948,7 @@ serve(async (req) => {
       })
     }
 
-    // Create campaign
+    // Create campaign with auto-approval for admin
     if (path.includes('/campaigns') && method === 'POST' && body) {
       const { data, error } = await supabase
         .from('campaigns')
@@ -962,7 +962,7 @@ serve(async (req) => {
           target_categories: body.target_categories || [],
           media_urls: body.media_urls || [],
           scheduled_at: body.scheduled_at || null,
-          status: 'pending_review'
+          status: 'active'
         })
         .select()
         .single()
@@ -975,7 +975,30 @@ serve(async (req) => {
         })
       }
       
-      return new Response(JSON.stringify({ campaign: data }), {
+      return new Response(JSON.stringify({ campaign: data, auto_approved: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Activate campaign endpoint
+    if (path.includes('/campaigns/') && path.includes('/activate') && method === 'POST') {
+      const campaignId = path.split('/campaigns/')[1].split('/activate')[0]
+      
+      const { data, error } = await supabase
+        .from('campaigns')
+        .update({ status: 'active', updated_at: new Date().toISOString() })
+        .eq('id', campaignId)
+        .select()
+        .single()
+      
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+      
+      return new Response(JSON.stringify({ success: true, campaign: data }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
@@ -1644,6 +1667,47 @@ serve(async (req) => {
         success: true,
         transactions: formattedTransactions
       }), { headers: corsHeaders });
+    }
+
+    // Budget settings GET endpoint
+    if (path.includes('/budget/settings') && method === 'GET') {
+      const { data: settings } = await supabase
+        .from('system_settings')
+        .select('setting_key, setting_value')
+        .in('setting_key', ['monthly_budget', 'warning_threshold', 'message_cost', 'daily_limit'])
+      
+      const settingsObj = {}
+      settings?.forEach(s => {
+        settingsObj[s.setting_key] = parseFloat(s.setting_value)
+      })
+      
+      return new Response(JSON.stringify({ success: true, settings: settingsObj }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+    
+    // Budget settings PUT endpoint
+    if (path.includes('/budget/settings') && method === 'PUT' && body) {
+      const settings = [
+        { key: 'monthly_budget', value: body.monthly_budget },
+        { key: 'warning_threshold', value: body.warning_threshold },
+        { key: 'message_cost', value: body.message_cost },
+        { key: 'daily_limit', value: body.daily_limit }
+      ];
+      
+      for (const setting of settings) {
+        if (setting.value !== undefined) {
+          await supabase
+            .from('system_settings')
+            .upsert({
+              setting_key: setting.key,
+              setting_value: String(setting.value),
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'setting_key' });
+        }
+      }
+      
+      return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
   } catch (error) {
