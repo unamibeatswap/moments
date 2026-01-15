@@ -546,7 +546,9 @@ South Africans share local opportunities and events here.
 
 async function sendMessage(phoneNumber, message) {
   try {
-    console.log(`Attempting to send message to ${phoneNumber}`);
+    console.log(`Attempting to send message to ${phoneNumber}:`, message);
+    console.log('WHATSAPP_PHONE_ID:', process.env.WHATSAPP_PHONE_ID);
+    console.log('WHATSAPP_TOKEN exists:', !!process.env.WHATSAPP_TOKEN);
     
     const response = await fetch(
       `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_ID}/messages`,
@@ -565,17 +567,16 @@ async function sendMessage(phoneNumber, message) {
       }
     );
     
+    const responseText = await response.text();
+    console.log('WhatsApp API response:', response.status, responseText);
+    
     if (response.ok) {
       console.log(`✅ Message sent to ${phoneNumber}`);
-      return true;
     } else {
-      const responseText = await response.text();
-      console.error(`❌ Send failed to ${phoneNumber}:`, responseText);
-      return false;
+      console.error('❌ Send message error:', responseText);
     }
   } catch (error) {
-    console.error(`❌ Send error to ${phoneNumber}:`, error.message);
-    return false;
+    console.error('❌ Send message error:', error.message);
   }
 }
 
@@ -1419,52 +1420,64 @@ app.post('/admin/moments/:id/broadcast', authenticateAdmin, async (req, res) => 
     
     const broadcastMessage = `📢 Unami Foundation Moments — ${moment.region}\n\n${moment.title}\n\n${moment.content}${sponsorText}\n\n🌐 More: moments.unamifoundation.org`;
     
-    // Direct WhatsApp broadcast implementation
-    let successCount = 0;
-    let failureCount = 0;
+    // Create batches for parallel processing
+    const batchSize = 50; // 50 recipients per batch
+    const batches = [];
+    const phoneNumbers = subscribers.map(s => s.phone_number);
     
-    console.log(`📡 Broadcasting to ${recipientCount} subscribers`);
-    
-    // Update broadcast status to processing
-    await supabase
-      .from('broadcasts')
-      .update({ status: 'processing' })
-      .eq('id', broadcast.id);
-    
-    // Send messages directly with rate limiting
-    for (let i = 0; i < subscribers.length; i++) {
-      const phoneNumber = subscribers[i].phone_number;
-      
-      try {
-        const success = await sendMessage(phoneNumber, broadcastMessage);
-        if (success) {
-          successCount++;
-        } else {
-          failureCount++;
-        }
-      } catch (error) {
-        console.error(`Failed to send to ${phoneNumber}:`, error.message);
-        failureCount++;
-      }
-      
-      // Rate limiting: 200ms between messages (5 msg/sec)
-      if (i < subscribers.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
+    for (let i = 0; i < phoneNumbers.length; i += batchSize) {
+      batches.push(phoneNumbers.slice(i, i + batchSize));
     }
     
-    // Update final broadcast results
+    console.log(`📡 Creating ${batches.length} batches for ${recipientCount} subscribers`);
+    
+    // Create batch records
+    const batchRecords = [];
+    for (let i = 0; i < batches.length; i++) {
+      const { data: batchRecord } = await supabase
+        .from('broadcast_batches')
+        .insert({
+          broadcast_id: broadcast.id,
+          batch_number: i + 1,
+          recipients: batches[i],
+          status: 'pending'
+        })
+        .select()
+        .single();
+      
+      if (batchRecord) batchRecords.push(batchRecord);
+    }
+    
+    // Update broadcast with batch info
     await supabase
       .from('broadcasts')
       .update({
-        status: 'completed',
-        success_count: successCount,
-        failure_count: failureCount,
-        broadcast_completed_at: new Date().toISOString()
+        status: 'processing',
+        batches_total: batches.length,
+        batches_completed: 0
       })
       .eq('id', broadcast.id);
     
-    console.log(`✅ Broadcast completed: ${successCount} success, ${failureCount} failed`);
+    // Trigger batch processors
+    for (const batchRecord of batchRecords) {
+      try {
+        await fetch(`${process.env.SUPABASE_URL}/functions/v1/broadcast-batch-processor`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            batch_id: batchRecord.id,
+            message: broadcastMessage
+          })
+        });
+      } catch (error) {
+        console.error(`Failed to trigger batch ${batchRecord.batch_number}:`, error.message);
+      }
+    }
+    
+    console.log(`✅ Triggered ${batchRecords.length} batch processors`);
     
     res.json({ 
       success: true, 
