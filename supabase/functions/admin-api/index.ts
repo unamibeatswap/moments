@@ -1055,16 +1055,34 @@ serve(async (req) => {
         query = query.eq('opted_in', false)
       }
 
-      const { data: subscribers, count } = await query
+      const { data: subscribers, count, error: queryError } = await query
+
+      if (queryError) {
+        console.error('Subscribers query error:', queryError)
+        return new Response(JSON.stringify({ 
+          error: queryError.message,
+          subscribers: [],
+          stats: { total: 0, active: 0, inactive: 0, commands_used: 0 }
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
 
       // Get real stats
-      const { data: allSubs } = await supabase
+      const { data: allSubs, error: statsError } = await supabase
         .from('subscriptions')
         .select('opted_in')
+
+      if (statsError) {
+        console.error('Subscribers stats error:', statsError)
+      }
 
       const total = allSubs?.length || 0
       const active = allSubs?.filter(s => s.opted_in).length || 0
       const inactive = total - active
+
+      console.log(`📊 Subscribers: total=${total}, active=${active}, inactive=${inactive}, returned=${subscribers?.length || 0}`)
 
       return new Response(JSON.stringify({
         subscribers: subscribers || [],
