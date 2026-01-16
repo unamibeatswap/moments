@@ -187,37 +187,36 @@ router.post('/moments/:id/broadcast', async (req, res) => {
 
     if (updateError) throw updateError;
 
-    // Check if WhatsApp intent already exists
-    const { data: existingIntent } = await supabase
+    // Create WhatsApp intent
+    const { data: whatsappIntent, error: intentError } = await supabase
       .from('moment_intents')
-      .select('id, status')
-      .eq('moment_id', id)
-      .eq('channel', 'whatsapp')
+      .insert({
+        moment_id: id,
+        channel: 'whatsapp',
+        action: 'publish',
+        status: 'pending',
+        payload: {
+          title: moment.title,
+          full_text: moment.content,
+          link: moment.pwa_link || `https://moments.unamifoundation.org/m/${id}`
+        }
+      })
+      .select()
       .single();
 
-    if (!existingIntent) {
-      // Create WhatsApp intent manually if trigger didn't fire
-      await supabase
-        .from('moment_intents')
-        .insert({
-          moment_id: id,
-          channel: 'whatsapp',
-          action: 'publish',
-          status: 'pending',
-          payload: {
-            title: moment.title,
-            summary: moment.content.substring(0, 100) + '...',
-            link: moment.pwa_link || `https://moments.unamifoundation.org/m/${id}`
-          }
-        });
+    if (intentError) {
+      console.error('WhatsApp intent creation failed:', intentError);
+      throw new Error(`Failed to create WhatsApp intent: ${intentError.message}`);
     }
 
     res.json({
       success: true,
       moment_id: id,
+      intent_id: whatsappIntent.id,
       message: 'Moment queued for WhatsApp broadcast. N8N will process within 1 minute.'
     });
   } catch (error) {
+    console.error('Broadcast endpoint error:', error);
     res.status(500).json({ error: error.message });
   }
 });
