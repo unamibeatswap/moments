@@ -711,30 +711,30 @@ serve(async (req) => {
             console.log(`📡 Auto-broadcast webhook: POST ${webhookUrl}`)
             console.log(`Status: Sending to ${subscribers.length} subscribers`)
 
-            try {
-              const webhookResponse = await fetch(webhookUrl, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-                  'Content-Type': 'application/json'
-                },
-                body: webhookPayload,
-                signal: AbortSignal.timeout(10000)
-              })
-
+            // Trigger webhook asynchronously - don't block response
+            fetch(webhookUrl, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                'Content-Type': 'application/json'
+              },
+              body: webhookPayload
+            }).then(async (webhookResponse) => {
               const responseText = await webhookResponse.text()
               console.log(`📨 Auto-broadcast response: ${webhookResponse.status} - ${responseText.substring(0, 300)}`)
-
+              
               if (!webhookResponse.ok) {
                 console.error(`❌ Auto-broadcast webhook failed: ${webhookResponse.status}\nURL: ${webhookUrl}\nResponse: ${responseText}`)
                 await logError(supabase, 'auto_broadcast_webhook_failed', `HTTP ${webhookResponse.status}: ${responseText}`, { broadcast_id: broadcast.id, moment_id: moment.id, webhook_url: webhookUrl }, 'high')
               } else {
                 console.log('✅ Auto-broadcast webhook succeeded')
               }
-            } catch (webhookError) {
+            }).catch(async (webhookError) => {
               console.error(`❌ Auto-broadcast webhook error: ${webhookError.message} (${webhookError.name})`)
               await logError(supabase, 'auto_broadcast_webhook_error', webhookError.message, { broadcast_id: broadcast.id, moment_id: moment.id, webhook_url: webhookUrl }, 'high')
-            }
+            })
+            
+            console.log('📡 Broadcast webhook triggered asynchronously')
           }
         } catch (broadcastError) {
           console.error('Auto-broadcast failed:', broadcastError)
@@ -839,31 +839,31 @@ serve(async (req) => {
       })
 
       console.log(`📡 Moment broadcast webhook: POST ${webhookUrl}`)
-      console.log(`Status: Creating broadcast for ${recipients.length} subscribers`)
-      try {
-        const webhookResponse = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-            'Content-Type': 'application/json'
-          },
-          body: webhookPayload,
-          signal: AbortSignal.timeout(10000)
-        })
-
+      console.log(`Status: Creating broadcast for ${recipientCount} subscribers`)
+      // Trigger webhook asynchronously - don't block response
+      fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          'Content-Type': 'application/json'
+        },
+        body: webhookPayload
+      }).then(async (webhookResponse) => {
         const responseText = await webhookResponse.text()
         console.log(`📨 Webhook response: ${webhookResponse.status} - ${responseText.substring(0, 300)}`)
-
+        
         if (!webhookResponse.ok) {
           console.error(`❌ Broadcast webhook failed: ${webhookResponse.status}\nURL: ${webhookUrl}\nResponse: ${responseText}`)
           await logError(supabase, 'moment_broadcast_webhook_failed', `HTTP ${webhookResponse.status}: ${responseText}`, { broadcast_id: broadcast.id, moment_id: momentId, webhook_url: webhookUrl }, 'high')
         } else {
           console.log('✅ Broadcast webhook succeeded')
         }
-      } catch (webhookError) {
+      }).catch(async (webhookError) => {
         console.error(`❌ Broadcast webhook error: ${webhookError.message} (${webhookError.name})`)
         await logError(supabase, 'moment_broadcast_webhook_error', webhookError.message, { broadcast_id: broadcast.id, moment_id: momentId, webhook_url: webhookUrl, error_name: webhookError.name }, 'high')
-      }
+      })
+      
+      console.log('📡 Broadcast webhook triggered asynchronously')
 
       return new Response(JSON.stringify({
         success: true,
@@ -1722,31 +1722,31 @@ serve(async (req) => {
       })
 
       console.log(`📡 Campaign broadcast webhook: POST ${webhookUrl}`)
-      console.log(`Status: Broadcasting to ${recipients.length} subscribers`)
-      try {
-        const webhookResponse = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-            'Content-Type': 'application/json'
-          },
-          body: webhookPayload,
-          signal: AbortSignal.timeout(10000)
-        })
-
+      console.log(`Status: Broadcasting to ${recipientCount} subscribers`)
+      // Trigger webhook asynchronously - don't block response
+      fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          'Content-Type': 'application/json'
+        },
+        body: webhookPayload
+      }).then(async (webhookResponse) => {
         const responseText = await webhookResponse.text()
         console.log(`📨 Campaign response: ${webhookResponse.status} - ${responseText.substring(0, 300)}`)
-
+        
         if (webhookResponse.ok) {
           console.log('✅ Campaign WhatsApp broadcast triggered successfully')
         } else {
           console.error(`❌ Campaign WhatsApp broadcast failed: ${webhookResponse.status}\nResponse: ${responseText}`)
           await logError(supabase, 'campaign_broadcast_webhook_failed', `HTTP ${webhookResponse.status}: ${responseText}`, { broadcast_id: broadcast.id, campaign_id: campaignId, webhook_url: webhookUrl }, 'high')
         }
-      } catch (webhookError) {
+      }).catch(async (webhookError) => {
         console.error(`❌ Campaign broadcast webhook error: ${webhookError.message} (${webhookError.name})`)
         await logError(supabase, 'campaign_broadcast_webhook_error', webhookError.message, { broadcast_id: broadcast.id, campaign_id: campaignId, webhook_url: webhookUrl }, 'high')
-      }
+      })
+      
+      console.log('📡 Campaign broadcast webhook triggered asynchronously')
 
       return new Response(JSON.stringify({
         success: true,
