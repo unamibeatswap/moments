@@ -698,7 +698,13 @@ serve(async (req) => {
               .eq('id', moment.id)
 
             // Trigger broadcast webhook
-            const broadcastMsg = `📢 Unami Foundation Moments — ${moment.region}\\n\\n${moment.title}\\n\\n${moment.content}\\n\\n🌐 More: moments.unamifoundation.org/moments`
+            const broadcastMsg = `📢 Unami Foundation Moments — ${moment.region}
+
+${moment.title}
+
+${moment.content}
+
+🌐 More: moments.unamifoundation.org/moments`
 
             const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/broadcast-webhook`
             const webhookPayload = JSON.stringify({
@@ -827,7 +833,13 @@ serve(async (req) => {
         .eq('id', momentId)
 
       // Format broadcast message
-      const broadcastMessage = `📢 Unami Foundation Moments — ${moment.region}\\n\\n${moment.title}\\n\\n${moment.content}\\n\\n🌐 More: moments.unamifoundation.org/moments`
+      const broadcastMessage = `📢 Unami Foundation Moments — ${moment.region}
+
+${moment.title}
+
+${moment.content}
+
+🌐 More: moments.unamifoundation.org/moments`
 
       // Trigger broadcast webhook
       const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/broadcast-webhook`
@@ -1708,7 +1720,13 @@ serve(async (req) => {
 
       // Format broadcast message
       const sponsorText = campaign.sponsor_id ? '\\n\\nSponsored Content' : ''
-      const broadcastMessage = `📢 Unami Foundation Campaign — ${moment.region}\\n\\n${moment.title}\\n\\n${moment.content}${sponsorText}\\n\\n🌐 More: moments.unamifoundation.org/moments`
+      const broadcastMessage = `📢 Unami Foundation Campaign — ${moment.region}
+
+${moment.title}
+
+${moment.content}${sponsorText}
+
+🌐 More: moments.unamifoundation.org/moments`
 
       console.log('📤 Triggering WhatsApp broadcast to', recipientCount, 'subscribers')
 
