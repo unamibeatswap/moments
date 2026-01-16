@@ -88,13 +88,24 @@ Admin broadcast endpoint at `/admin/moments/:id/broadcast`:
 - Database: `moment_intents`, `broadcasts`, `moments`
 - n8n: Intent executor workflow
 
-## Status: PARTIALLY FIXED - NEW ISSUE DISCOVERED
+## CRITICAL CORRECTION
 
-### Fix Applied (Commit 2834274)
-- ✅ Removed existingIntent check that blocked intent creation
-- ✅ Added proper error handling and logging
-- ✅ Always create WhatsApp intent on broadcast
-- ✅ Return intent_id in response
+**I made a major mistake**: Modified `server-bulletproof.js` and `src/admin.js` which are NOT used in production.
+
+**Actual Production Architecture:**
+- ✅ Supabase Edge Functions: `admin-api`, `broadcast-webhook`, `broadcast-batch-processor`
+- ✅ Vercel: Hosts PWA frontend ONLY (no backend)
+- ❌ NO Node.js server in production
+- ❌ Changes to `server-bulletproof.js` are irrelevant
+
+**Real Issue:**
+The `admin-api` edge function creates `broadcasts` table records and calls `broadcast-webhook`, but:
+1. Dashboard shows `broadcasts` table (always 0 delivered)
+2. Actual WhatsApp delivery may be working via `broadcast-webhook`
+3. The `broadcasts` table isn't being updated with success/failure counts
+4. Environment variables (WHATSAPP_TOKEN, WHATSAPP_PHONE_ID) must be set in Supabase edge function secrets
+
+## Status: ARCHITECTURE MISUNDERSTANDING - NEED TO VERIFY SUPABASE SECRETS
 
 ### New Issue: Broadcasts Table vs Intent System Conflict
 
