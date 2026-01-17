@@ -513,7 +513,17 @@ serve(async (req) => {
                   last_activity: new Date().toISOString()
                 }).eq('phone_number', message.from)
                 
-                await sendWhatsAppMessage(message.from, `✅ Language set to ${langNames[buttonId]}\n\nUnami Foundation Moments App\n\n🌐 moments.unamifoundation.org/moments`)
+                await sendWhatsAppMessage(message.from, `✅ Language: ${langNames[buttonId]}\n\nUnami Foundation Moments App\n\n🌐 moments.unamifoundation.org/moments`)
+                continue
+              }
+              
+              if (buttonId.startsWith('submit_')) {
+                await sendWhatsAppMessage(message.from, '📝 Great! Now send your message.\n\nUnami Foundation Moments App\nDigital Notice Board')
+                continue
+              }
+              
+              if (buttonId.startsWith('report_') || buttonId.startsWith('feedback_')) {
+                await sendWhatsAppMessage(message.from, '✅ Thank you!\n\nUnami Foundation Moments App\nDigital Notice Board')
                 continue
               }
             }
@@ -522,6 +532,7 @@ serve(async (req) => {
             const text = (message.text?.body || '').toLowerCase().trim()
             const isCommand = ['start', 'join', 'subscribe', 'stop', 'unsubscribe', 'quit', 'cancel',
                                'help', 'info', 'menu', '?', 'moments', 'share', 'submit', 'status', 'settings', 'language',
+                               'recent', 'report', 'feedback',
                                'regions', 'region', 'areas', 'interests', 'categories', 'topics'].includes(text) ||
                               isRegionSelection(text) || isCategorySelection(text)
             
@@ -699,7 +710,7 @@ serve(async (req) => {
               
               // Send with buttons
               await sendInteractiveButtons(message.from,
-                '🌟 Welcome to Unami Foundation Moments!\n\nGet community updates across South Africa.\n\nChoose an option:',
+                '🌟 Welcome to Unami Foundation Moments App!\n\nYour Digital Notice Board for South Africa.\n\nChoose an option:',
                 [
                   { id: 'btn_regions', title: '📍 Choose Regions' },
                   { id: 'btn_interests', title: '🏷️ Choose Interests' },
@@ -728,7 +739,7 @@ serve(async (req) => {
               console.log('Moments guide sent to:', message.from)
             } else if (['help', 'info', 'menu', '?'].includes(text)) {
               // Enhanced help command with all system commands
-              const helpMsg = `📡 Unami Foundation Moments - Command Guide\n\n🔄 START/JOIN - Subscribe to community updates\n🛑 STOP/UNSUBSCRIBE - Unsubscribe from updates\n❓ HELP/INFO - Show this command guide\n📍 REGIONS - Choose your areas of interest\n🏷️ INTERESTS - Manage content categories\n\n🌍 Available Regions:\nKZN (KwaZulu-Natal), WC (Western Cape)\nGP (Gauteng), EC (Eastern Cape)\nFS (Free State), LP (Limpopo)\nMP (Mpumalanga), NC (Northern Cape)\nNW (North West)\n\n📱 How to use:\n• Send any message to share with community\n• Reply with region codes: "KZN WC GP"\n• All content is moderated for safety\n\n🌐 Web: moments.unamifoundation.org/moments\n📧 Support: info@unamifoundation.org\n\nYour community sharing platform 🇿🇦`
+              const helpMsg = `📡 Unami Foundation Moments App\nYour Digital Notice Board\n\n🔄 START - Subscribe\n🛑 STOP - Unsubscribe\n⚙️ STATUS - View settings\n📍 REGIONS - Choose areas\n🏷️ INTERESTS - Manage topics\n🌍 LANGUAGE - Change language\n📰 RECENT - Latest moments\n📝 SUBMIT - Share content\n\n🌐 moments.unamifoundation.org/moments\n📧 info@unamifoundation.org\n\nYour Digital Notice Board 🇿🇦`
               await sendWhatsAppMessage(message.from, helpMsg)
               
               console.log('Help sent to:', message.from)
@@ -782,6 +793,53 @@ serve(async (req) => {
               )
               
               console.log('Language selector sent to:', message.from)
+            } else if (text === 'recent') {
+              const { data: moments } = await supabase
+                .from('moments')
+                .select('title, region')
+                .eq('status', 'broadcasted')
+                .order('broadcasted_at', { ascending: false })
+                .limit(5)
+              
+              if (moments && moments.length > 0) {
+                const list = moments.map((m, i) => `${i+1}. ${m.title}\n   📍 ${m.region}`).join('\n\n')
+                await sendWhatsAppMessage(message.from, `📰 Unami Foundation Moments App\nDigital Notice Board\n\nRecent moments:\n\n${list}\n\n🌐 moments.unamifoundation.org/moments`)
+              } else {
+                await sendWhatsAppMessage(message.from, '📰 No recent moments.\n\nUnami Foundation Moments App\n\n🌐 moments.unamifoundation.org/moments')
+              }
+            } else if (text === 'submit') {
+              await sendInteractiveList(message.from,
+                '📝 Unami Foundation Moments App\nDigital Notice Board\n\nWhat type of moment?',
+                'Select Category',
+                [{
+                  title: 'Categories',
+                  rows: [
+                    { id: 'submit_edu', title: '🎓 Education', description: 'Training' },
+                    { id: 'submit_saf', title: '🛡️ Safety', description: 'Alerts' },
+                    { id: 'submit_opp', title: '💼 Opportunity', description: 'Jobs' },
+                    { id: 'submit_eve', title: '🎉 Event', description: 'Gatherings' },
+                    { id: 'submit_other', title: '✏️ Other', description: 'General' }
+                  ]
+                }]
+              )
+            } else if (text === 'report') {
+              await sendInteractiveButtons(message.from,
+                '🚨 Unami Foundation Moments App\n\nReport content:',
+                [
+                  { id: 'report_spam', title: '📢 Spam' },
+                  { id: 'report_inappropriate', title: '⚠️ Inappropriate' },
+                  { id: 'report_wrong', title: '❌ Wrong Info' }
+                ]
+              )
+            } else if (text === 'feedback') {
+              await sendInteractiveButtons(message.from,
+                '💬 Unami Foundation Moments App\nDigital Notice Board\n\nYour feedback:',
+                [
+                  { id: 'feedback_good', title: '👍 Love it' },
+                  { id: 'feedback_suggest', title: '💡 Suggestion' },
+                  { id: 'feedback_issue', title: '🐛 Issue' }
+                ]
+              )
             } else if (isRegionSelection(text)) {
               // Handle region selection
               await handleRegionSelection(message.from, text, supabase)
