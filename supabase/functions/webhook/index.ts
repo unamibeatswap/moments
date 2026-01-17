@@ -54,9 +54,13 @@ async function handleCategorySelection(phoneNumber: string, categoryString: stri
         opted_in: true
       }, { onConflict: 'phone_number' })
     
-    const confirmMessage = `✅ Interests updated!\n\nYou'll now receive updates about:\n${selectedCategories.map(cat => `🎯 ${cat}`).join('\n')}\n\n💬 Submit moments by messaging here\n🌐 Browse all: moments.unamifoundation.org/moments`
+    const confirmMessage = `✅ Interests updated!\n\nYou'll now receive updates about:\n${selectedCategories.map(cat => `🎯 ${cat}`).join('\n')}`
     
-    await sendWhatsAppMessage(phoneNumber, confirmMessage)
+    await sendInteractiveButtons(phoneNumber, confirmMessage, [
+      { id: 'see_moments', title: '📰 See Moments' },
+      { id: 'add_more_topics', title: '➕ Add More' },
+      { id: 'done', title: '✅ Done' }
+    ])
     console.log(`User ${phoneNumber} updated categories to: ${selectedCategories.join(', ')}`)
   } catch (error) {
     console.error('Category selection error:', error)
@@ -95,9 +99,13 @@ async function handleRegionSelection(phoneNumber: string, regionString: string, 
         opted_in: true
       }, { onConflict: 'phone_number' })
     
-    const confirmMessage = `✅ Regions updated!\n\nYou'll now receive community signals from:\n${selectedRegions.map(region => `📍 ${region}`).join('\n')}\n\n💬 Submit moments by messaging here\n🌐 Browse all: moments.unamifoundation.org/moments`
+    const confirmMessage = `✅ Regions updated!\n\nYou'll now receive updates from:\n${selectedRegions.map(region => `📍 ${region}`).join('\n')}`
     
-    await sendWhatsAppMessage(phoneNumber, confirmMessage)
+    await sendInteractiveButtons(phoneNumber, confirmMessage, [
+      { id: 'see_moments', title: '📰 See Moments' },
+      { id: 'add_more_regions', title: '➕ Add More' },
+      { id: 'done', title: '✅ Done' }
+    ])
     console.log(`User ${phoneNumber} updated regions to: ${selectedRegions.join(', ')}`)
   } catch (error) {
     console.error('Region selection error:', error)
@@ -524,6 +532,16 @@ serve(async (req) => {
               
               if (buttonId.startsWith('report_') || buttonId.startsWith('feedback_')) {
                 await sendWhatsAppMessage(message.from, '✅ Thank you!\n\nUnami Foundation Moments App\nDigital Notice Board')
+                continue
+              }
+              
+              if (['see_moments', 'done', 'add_more_regions', 'add_more_topics'].includes(buttonId)) {
+                if (buttonId === 'see_moments') {
+                  const { data: m } = await supabase.from('moments').select('title,region').eq('status','broadcasted').order('broadcasted_at',{ascending:false}).limit(3)
+                  if (m?.length) await sendWhatsAppMessage(message.from, `📰 Latest:\n\n${m.map((x,i)=>`${i+1}. ${x.title}\n   📍 ${x.region}`).join('\n\n')}\n\n🌐 moments.unamifoundation.org/moments`)
+                } else if (buttonId === 'done') {
+                  await sendWhatsAppMessage(message.from, '✅ All set!\n\nUnami Foundation Moments App\nDigital Notice Board\n\n🌐 moments.unamifoundation.org/moments')
+                }
                 continue
               }
             }
