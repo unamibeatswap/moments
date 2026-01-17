@@ -544,13 +544,38 @@ serve(async (req) => {
                 }
                 continue
               }
+              
+              if (buttonId.startsWith('pause_')) {
+                const days = { pause_1d: 1, pause_3d: 3, pause_7d: 7, pause_30d: 30 }[buttonId]
+                await supabase.from('subscriptions').update({
+                  paused_until: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
+                  last_activity: new Date().toISOString()
+                }).eq('phone_number', message.from)
+                await sendWhatsAppMessage(message.from, `⏸️ Paused for ${days} day(s).\n\nUnami Foundation Moments App\nDigital Notice Board`)
+                continue
+              }
+              
+              if (buttonId.startsWith('sched_')) {
+                const schedMap = { sched_instant: 'instant', sched_morning: 'morning', sched_evening: 'evening', sched_weekly: 'weekly' }
+                await supabase.from('subscriptions').update({
+                  delivery_schedule: schedMap[buttonId],
+                  last_activity: new Date().toISOString()
+                }).eq('phone_number', message.from)
+                await sendWhatsAppMessage(message.from, `🔔 Schedule updated!\n\nUnami Foundation Moments App\nDigital Notice Board`)
+                continue
+              }
+              
+              if (buttonId === 'auth_stats' || buttonId === 'auth_help') {
+                await sendWhatsAppMessage(message.from, '📊 Authority stats coming soon.\n\nUnami Foundation Moments App\nDigital Notice Board')
+                continue
+              }
             }
             
             // Check if message is a command first
             const text = (message.text?.body || '').toLowerCase().trim()
             const isCommand = ['start', 'join', 'subscribe', 'stop', 'unsubscribe', 'quit', 'cancel',
                                'help', 'info', 'menu', '?', 'moments', 'share', 'submit', 'status', 'settings', 'language',
-                               'recent', 'report', 'feedback',
+                               'recent', 'report', 'feedback', 'myauthority', 'pause', 'schedule',
                                'regions', 'region', 'areas', 'interests', 'categories', 'topics'].includes(text) ||
                               isRegionSelection(text) || isCategorySelection(text)
             
@@ -857,6 +882,48 @@ serve(async (req) => {
                   { id: 'feedback_suggest', title: '💡 Suggestion' },
                   { id: 'feedback_issue', title: '🐛 Issue' }
                 ]
+              )
+            } else if (text === 'myauthority') {
+              const authority = await lookupAuthority(message.from, supabase)
+              if (authority) {
+                await sendInteractiveButtons(message.from,
+                  `👑 Unami Foundation Moments App\nDigital Notice Board\n\nYour Authority:\n\nLevel: ${authority.authority_level}\nRole: ${authority.role_label}\nScope: ${authority.scope}\nReach: ${authority.blast_radius} subscribers`,
+                  [
+                    { id: 'auth_stats', title: '📊 My Stats' },
+                    { id: 'auth_help', title: '❓ Help' },
+                    { id: 'done', title: '✅ Done' }
+                  ]
+                )
+              } else {
+                await sendWhatsAppMessage(message.from, '❌ No authority profile found.\n\nUnami Foundation Moments App\nDigital Notice Board')
+              }
+            } else if (text === 'pause') {
+              await sendInteractiveList(message.from,
+                '⏸️ Unami Foundation Moments App\nDigital Notice Board\n\nPause notifications for:',
+                'Select Duration',
+                [{
+                  title: 'Duration',
+                  rows: [
+                    { id: 'pause_1d', title: '1 Day', description: 'Resume tomorrow' },
+                    { id: 'pause_3d', title: '3 Days', description: 'Resume in 3 days' },
+                    { id: 'pause_7d', title: '7 Days', description: 'Resume in 1 week' },
+                    { id: 'pause_30d', title: '30 Days', description: 'Resume in 1 month' }
+                  ]
+                }]
+              )
+            } else if (text === 'schedule') {
+              await sendInteractiveList(message.from,
+                '🔔 Unami Foundation Moments App\nDigital Notice Board\n\nWhen to send updates?',
+                'Select Time',
+                [{
+                  title: 'Delivery Times',
+                  rows: [
+                    { id: 'sched_instant', title: '⚡ Instant', description: 'As they happen' },
+                    { id: 'sched_morning', title: '🌅 Morning', description: '8 AM daily' },
+                    { id: 'sched_evening', title: '🌆 Evening', description: '6 PM daily' },
+                    { id: 'sched_weekly', title: '📅 Weekly', description: 'Friday digest' }
+                  ]
+                }]
               )
             } else if (isRegionSelection(text)) {
               // Handle region selection
