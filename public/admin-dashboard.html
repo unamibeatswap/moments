@@ -1512,6 +1512,11 @@
         function handleAction(action, btn, event) {
             switch (action) {
                 case 'create-authority':
+                    console.log('Create authority button clicked');
+                    document.getElementById('authority-form').reset();
+                    document.getElementById('authority-edit-id').value = '';
+                    document.getElementById('authority-form-title').textContent = 'Assign Authority';
+                    document.getElementById('authority-submit-btn').textContent = 'Assign Authority';
                     showSection('authority-form-section');
                     break;
                 case 'close-authority-form':
