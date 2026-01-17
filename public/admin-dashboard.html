@@ -368,7 +368,7 @@
                         <span class="icon icon-settings"></span>
                         <span>Settings</span>
                     </button>
-                    <button class="admin-nav-item" data-section="authority" style="display: none;" id="authority-nav-item">
+                    <button class="admin-nav-item" data-section="authority" id="authority-nav-item">
                         <span class="icon icon-authority">🔐</span>
                         <span>Authority</span>
                     </button>
@@ -1907,23 +1907,9 @@
                 }
             });
             
-            // Show authority nav for content_admin and superadmin
-            setTimeout(() => {
-                const token = localStorage.getItem('admin.auth.token');
-                if (token) {
-                    fetch('/admin/user-role', {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    })
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.role === 'content_admin' || data.role === 'superadmin') {
-                            const navItem = document.getElementById('authority-nav-item');
-                            if (navItem) navItem.style.display = 'block';
-                        }
-                    })
-                    .catch(() => {});
-                }
-            }, 1000);
+            // Show authority nav immediately for all admins
+            const navItem = document.getElementById('authority-nav-item');
+            if (navItem) navItem.style.display = 'block';
         });
     </script>
     <script src="/js/chart.min.js"></script>
