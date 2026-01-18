@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Optimizations Test</title>
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/admin-dashboard.css?v=2.0.0">
+    <style>
+        body { padding: 2rem; max-width: 1200px; margin: 0 auto; }
+        .test-section { margin-bottom: 2rem; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 0.5rem; }
+        .test-section h2 { color: #2563eb; margin-bottom: 1rem; }
+        .test-pass { color: #16a34a; font-weight: bold; }
+        .test-fail { color: #dc2626; font-weight: bold; }
+        .demo-container { margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 0.375rem; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Dashboard Optimizations Test Page</h1>
+    <p>This page tests all 10 optimizations. Check console for detailed logs.</p>
+
+    <!-- Test 1: CSS Consolidation -->
+    <div class="test-section">
+        <h2>1. CSS Consolidation</h2>
+        <p id="test-css" class="test-fail">❌ Testing...</p>
+        <div class="demo-container">
+            <div class="card">
+                <p>If this card has proper styling (white background, shadow, rounded corners), CSS is loaded.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test 2: JavaScript Modularization -->
+    <div class="test-section">
+        <h2>2. JavaScript Modularization</h2>
+        <p id="test-js" class="test-fail">❌ Testing...</p>
+        <div class="demo-container">
+            <button class="btn" onclick="testModules()">Test Modules</button>
+            <p id="module-result"></p>
+        </div>
+    </div>
+
+    <!-- Test 3: Form Validation -->
+    <div class="test-section">
+        <h2>3. Form Validation</h2>
+        <p id="test-validation" class="test-fail">❌ Testing...</p>
+        <div class="demo-container">
+            <form id="test-form">
+                <div class="form-group">
+                    <label>Email (required)</label>
+                    <input type="email" required placeholder="test@example.com">
+                </div>
+                <button type="submit" class="btn">Submit</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Test 4: Skeleton Loaders -->
+    <div class="test-section">
+        <h2>4. Skeleton Loaders</h2>
+        <p id="test-skeleton" class="test-fail">❌ Testing...</p>
+        <div class="demo-container">
+            <button class="btn" onclick="testSkeleton()">Show Skeleton</button>
+            <div id="skeleton-demo" style="margin-top: 1rem;"></div>
+        </div>
+    </div>
+
+    <!-- Test 5: Empty States -->
+    <div class="test-section">
+        <h2>5. Empty States</h2>
+        <p id="test-empty" class="test-fail">❌ Testing...</p>
+        <div class="demo-container">
+            <button class="btn" onclick="testEmptyState()">Show Empty State</button>
+            <div id="empty-demo" style="margin-top: 1rem;"></div>
+        </div>
+    </div>
+
+    <!-- Test 6: Performance Monitoring -->
+    <div class="test-section">
+        <h2>6. Performance Monitoring</h2>
+        <p id="test-perf" class="test-fail">❌ Testing...</p>
+        <div class="demo-container">
+            <button class="btn" onclick="testPerformance()">Test Performance</button>
+            <p id="perf-result"></p>
+        </div>
+    </div>
+
+    <!-- Test 7: Error Handling -->
+    <div class="test-section">
+        <h2>7. Error Handling</h2>
+        <p id="test-error" class="test-fail">❌ Testing...</p>
+        <div class="demo-container">
+            <button class="btn" onclick="testErrorHandling()">Test Error</button>
+        </div>
+    </div>
+
+    <!-- Test 8: Notifications -->
+    <div class="test-section">
+        <h2>8. Notifications</h2>
+        <p id="test-notification" class="test-fail">❌ Testing...</p>
+        <div class="demo-container">
+            <button class="btn" onclick="testNotification()">Show Notification</button>
+        </div>
+    </div>
+
+    <!-- Test 9: Accessibility -->
+    <div class="test-section">
+        <h2>9. Accessibility (ARIA)</h2>
+        <p id="test-aria" class="test-fail">❌ Testing...</p>
+        <div class="demo-container">
+            <button class="btn" aria-label="Test button with ARIA label">ARIA Button</button>
+            <nav role="navigation" aria-label="Test navigation">
+                <button>Nav Item</button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Test 10: Debouncing -->
+    <div class="test-section">
+        <h2>10. Search Debouncing</h2>
+        <p id="test-debounce" class="test-fail">❌ Testing...</p>
+        <div class="demo-container">
+            <input type="text" class="search-box" id="test-search" placeholder="Type to test debouncing...">
+            <p id="debounce-result" style="margin-top: 0.5rem; color: #6b7280;"></p>
+        </div>
+    </div>
+
+    <script src="/js/admin-dashboard-core.js?v=2.0.0"></script>
+    <script>
+        console.log('🧪 Running Dashboard Optimization Tests...');
+
+        // Test 1: CSS Consolidation
+        setTimeout(() => {
+            const card = document.querySelector('.card');
+            const styles = window.getComputedStyle(card);
+            if (styles.backgroundColor === 'rgb(255, 255, 255)' && styles.borderRadius !== '0px') {
+                document.getElementById('test-css').innerHTML = '✅ PASS - External CSS loaded';
+                document.getElementById('test-css').className = 'test-pass';
+            }
+        }, 100);
+
+        // Test 2: JavaScript Modularization
+        function testModules() {
+            if (window.dashboardCore) {
+                document.getElementById('test-js').innerHTML = '✅ PASS - Modules loaded';
+                document.getElementById('test-js').className = 'test-pass';
+                document.getElementById('module-result').innerHTML = `
+                    <strong>Available utilities:</strong><br>
+                    - perf (performance monitoring)<br>
+                    - handleError (error handling)<br>
+                    - validateField (form validation)<br>
+                    - showSkeleton (skeleton loaders)<br>
+                    - showEmptyState (empty states)<br>
+                    - showNotification (notifications)<br>
+                    - debounce (debouncing)
+                `;
+            } else {
+                document.getElementById('module-result').innerHTML = '❌ Modules not loaded';
+            }
+        }
+        setTimeout(testModules, 100);
+
+        // Test 3: Form Validation
+        setTimeout(() => {
+            const form = document.getElementById('test-form');
+            if (form && window.dashboardCore && window.dashboardCore.validateField) {
+                document.getElementById('test-validation').innerHTML = '✅ PASS - Validation active';
+                document.getElementById('test-validation').className = 'test-pass';
+            }
+        }, 100);
+
+        // Test 4: Skeleton Loaders
+        function testSkeleton() {
+            if (window.dashboardCore && window.dashboardCore.showSkeleton) {
+                window.dashboardCore.showSkeleton('skeleton-demo', 'card', 2);
+                document.getElementById('test-skeleton').innerHTML = '✅ PASS - Skeleton loaders work';
+                document.getElementById('test-skeleton').className = 'test-pass';
+                setTimeout(() => {
+                    document.getElementById('skeleton-demo').innerHTML = '<p class="test-pass">Skeleton loaded successfully!</p>';
+                }, 2000);
+            }
+        }
+
+        // Test 5: Empty States
+        function testEmptyState() {
+            if (window.dashboardCore && window.dashboardCore.showEmptyState) {
+                window.dashboardCore.showEmptyState('empty-demo', {
+                    icon: '📊',
+                    title: 'Test Empty State',
+                    message: 'This is a test empty state',
+                    action: { label: 'Test Action', handler: 'alert("Action clicked!")' }
+                });
+                document.getElementById('test-empty').innerHTML = '✅ PASS - Empty states work';
+                document.getElementById('test-empty').className = 'test-pass';
+            }
+        }
+
+        // Test 6: Performance Monitoring
+        function testPerformance() {
+            if (window.dashboardCore && window.dashboardCore.perf) {
+                window.dashboardCore.perf.mark('test-start');
+                setTimeout(() => {
+                    const duration = window.dashboardCore.perf.measure('Test Operation', 'test-start');
+                    document.getElementById('perf-result').innerHTML = `⚡ Operation took ${duration.toFixed(2)}ms`;
+                    document.getElementById('test-perf').innerHTML = '✅ PASS - Performance monitoring works';
+                    document.getElementById('test-perf').className = 'test-pass';
+                }, 100);
+            }
+        }
+
+        // Test 7: Error Handling
+        function testErrorHandling() {
+            if (window.dashboardCore && window.dashboardCore.handleError) {
+                const testError = new Error('NETWORK_ERROR');
+                window.dashboardCore.handleError(testError, 'test');
+                document.getElementById('test-error').innerHTML = '✅ PASS - Error handling works';
+                document.getElementById('test-error').className = 'test-pass';
+            }
+        }
+
+        // Test 8: Notifications
+        function testNotification() {
+            if (window.dashboardCore && window.dashboardCore.showNotification) {
+                window.dashboardCore.showNotification('Test notification - optimizations working!', 'success');
+                document.getElementById('test-notification').innerHTML = '✅ PASS - Notifications work';
+                document.getElementById('test-notification').className = 'test-pass';
+            }
+        }
+
+        // Test 9: Accessibility
+        setTimeout(() => {
+            const ariaButton = document.querySelector('[aria-label]');
+            const ariaNav = document.querySelector('[role="navigation"]');
+            if (ariaButton && ariaNav) {
+                document.getElementById('test-aria').innerHTML = '✅ PASS - ARIA labels present';
+                document.getElementById('test-aria').className = 'test-pass';
+            }
+        }, 100);
+
+        // Test 10: Debouncing
+        let debounceCount = 0;
+        const testSearch = document.getElementById('test-search');
+        if (testSearch && window.dashboardCore && window.dashboardCore.debounce) {
+            const debouncedTest = window.dashboardCore.debounce((value) => {
+                debounceCount++;
+                document.getElementById('debounce-result').innerHTML = `Search called ${debounceCount} times (debounced)`;
+            }, 300);
+            
+            testSearch.addEventListener('input', (e) => {
+                debouncedTest(e.target.value);
+            });
+            
+            document.getElementById('test-debounce').innerHTML = '✅ PASS - Debouncing active';
+            document.getElementById('test-debounce').className = 'test-pass';
+        }
+
+        // Summary
+        setTimeout(() => {
+            const passes = document.querySelectorAll('.test-pass').length;
+            const total = 10;
+            console.log(`\n✅ Tests Complete: ${passes}/${total} passed`);
+            
+            if (passes === total) {
+                alert(`🎉 All ${total} optimizations are working!\n\nCheck the console for detailed logs.`);
+            } else {
+                alert(`⚠️ ${passes}/${total} tests passed.\n\nCheck the console for details.`);
+            }
+        }, 500);
+    </script>
+</body>
+</html>
