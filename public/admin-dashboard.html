@@ -1513,30 +1513,13 @@
         
         // Action handler for better organization
         function handleAction(action, btn, event) {
-            console.log('=== handleAction START ===');
-            console.log('Action:', action);
-            console.log('Button:', btn);
-            console.log('Event:', event);
-            
             switch (action) {
                 case 'create-authority':
-                    console.log('✅ Create authority case matched');
-                    console.log('Resetting form...');
-                    const form = document.getElementById('authority-form');
-                    if (form) {
-                        form.reset();
-                        console.log('Form reset complete');
-                    } else {
-                        console.error('❌ Form not found!');
-                    }
-                    
+                    document.getElementById('authority-form').reset();
                     document.getElementById('authority-edit-id').value = '';
                     document.getElementById('authority-form-title').textContent = 'Assign Authority';
                     document.getElementById('authority-submit-btn').textContent = 'Assign Authority';
-                    
-                    console.log('Calling showSection...');
                     showSection('authority-form-section');
-                    console.log('✅ showSection called');
                     break;
                 case 'close-authority-form':
                     showSection('authority');
@@ -1553,8 +1536,20 @@
                 case 'create-campaign':
                     showSection('campaign-form-section');
                     break;
+                case 'close-campaign-form':
+                    showSection('campaigns');
+                    break;
                 case 'new-sponsor':
                     showSection('sponsor-form-section');
+                    break;
+                case 'close-sponsor-form':
+                    showSection('sponsors');
+                    break;
+                case 'new-admin-user':
+                    showSection('admin-user-form-section');
+                    break;
+                case 'close-admin-user-form':
+                    showSection('users');
                     break;
                 case 'back-to-moments':
                     showSection('moments');
@@ -1567,32 +1562,12 @@
         
         // Fast section switching
         function showSection(sectionId) {
-            console.log('=== showSection START ===');
-            console.log('Target section:', sectionId);
-            
-            // Hide all sections
-            const allSections = document.querySelectorAll('.section');
-            console.log('Total sections found:', allSections.length);
-            allSections.forEach(s => {
-                s.classList.remove('active');
-                console.log('Removed active from:', s.id);
-            });
-            
-            // Show target section
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             const target = document.getElementById(sectionId);
-            console.log('Target element:', target);
-            
             if (target) {
                 target.classList.add('active');
-                console.log('✅ Added active class to:', sectionId);
-                console.log('Target display:', window.getComputedStyle(target).display);
                 target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                console.log('✅ Scrolled to section');
-            } else {
-                console.error('❌ Section not found:', sectionId);
             }
-            
-            console.log('=== showSection END ===');
         }
         
         // Direct Supabase auth check without library
@@ -1621,14 +1596,10 @@
                 const btn = e.target.closest('button');
                 if (!btn) return;
                 
-                console.log('Button clicked:', btn.dataset.action);
-                
                 // Immediate visual feedback
                 if (!btn.disabled && !btn.classList.contains('loading')) {
                     btn.style.transform = 'translateY(0) scale(0.98)';
-                    setTimeout(() => {
-                        btn.style.transform = '';
-                    }, 100);
+                    setTimeout(() => btn.style.transform = '', 100);
                 }
                 
                 // Handle specific actions
@@ -1636,7 +1607,6 @@
                 if (action) {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('Handling action:', action);
                     handleAction(action, btn, e);
                 }
             }, true);
