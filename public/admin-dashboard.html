@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#2563eb">
     <link rel="stylesheet" href="/css/design-system.css">
     <link rel="stylesheet" href="/css/admin-header.css">
-    <link rel="stylesheet" href="/css/admin-dashboard.css?v=2.0.1">
+    <link rel="stylesheet" href="/css/admin-dashboard.css?v=2.0.2">
     <style>
         /* Minimal inline styles for critical rendering */
         
@@ -1464,6 +1464,10 @@
         let refreshTimeout;
         function refreshDashboardAnalytics(btn) {
             if (refreshTimeout) return;
+            if (typeof loadAnalytics !== 'function') {
+                console.error('loadAnalytics not loaded yet');
+                return;
+            }
             window.dashboardCore.setButtonLoading(btn, true);
             refreshTimeout = setTimeout(async () => {
                 try {
@@ -1478,11 +1482,17 @@
             }, 100);
         }
     </script>
-    <script src="/js/admin-dashboard-core.js?v=2.0.1"></script>
+    <script src="/js/admin-dashboard-core.js?v=2.0.2"></script>
     <script src="/js/chart.min.js"></script>
-    <script src="/js/admin.js?v=1.1.4"></script>
+    <script src="/js/admin.js?v=1.1.5"></script>
     <script src="/js/analytics.js"></script>
     <script src="/js/compliance.js"></script>
     <script src="/js/admin-header-enhance.js"></script>
+    <script>
+        // Wait for all scripts to load before initializing
+        window.addEventListener('load', () => {
+            console.log('✅ All scripts loaded, dashboard ready');
+        });
+    </script>
 </body>
 </html>
