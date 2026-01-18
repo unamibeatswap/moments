@@ -1934,6 +1934,5 @@
     <script src="/js/admin.js?v=1.1.3"></script>
     <script src="/js/analytics.js"></script>
     <script src="/js/compliance.js"></script>
-    <script src="/js/admin-header-enhance.js"></script>
 </body>
 </html>
