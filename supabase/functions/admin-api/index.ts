@@ -704,7 +704,7 @@ ${moment.title}
 
 ${moment.content}
 
-🌐 More: moments.unamifoundation.org/moments`
+🌐 More: moments.unamifoundation.org/m/${moment.id}`
 
             const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/broadcast-webhook`
             const webhookPayload = JSON.stringify({
@@ -839,7 +839,7 @@ ${moment.title}
 
 ${moment.content}
 
-🌐 More: moments.unamifoundation.org/moments`
+🌐 More: moments.unamifoundation.org/m/${momentId}`
 
       // Trigger broadcast webhook
       const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/broadcast-webhook`
