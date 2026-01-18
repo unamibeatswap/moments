@@ -1092,6 +1092,17 @@
                 <div id="settings-message"></div>
                 
                 <div class="card" style="margin-top: 1rem;">
+                    <h3>Appearance</h3>
+                    <div class="form-group">
+                        <label>Theme</label>
+                        <button id="dark-mode-toggle" class="btn btn-secondary" onclick="window.darkMode.toggle()" style="width: 100%;">
+                            🌙 Dark
+                        </button>
+                        <small style="color: #6b7280;">Toggle between light and dark mode</small>
+                    </div>
+                </div>
+                
+                <div class="card" style="margin-top: 1rem;">
                     <h3>WhatsApp Configuration</h3>
                     <div class="form-group">
                         <label>Phone Number</label>
@@ -1483,6 +1494,8 @@
         }
     </script>
     <script src="/js/admin-dashboard-core.js?v=2.0.2"></script>
+    <script src="/js/dark-mode.js"></script>
+    <script src="/js/keyboard-shortcuts.js"></script>
     <script src="/js/chart.min.js"></script>
     <script src="/js/admin.js?v=1.1.5"></script>
     <script src="/js/analytics.js"></script>
