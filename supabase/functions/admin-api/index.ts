@@ -1726,7 +1726,7 @@ ${moment.title}
 
 ${moment.content}${sponsorText}
 
-🌐 More: moments.unamifoundation.org/moments`
+🌐 More: moments.unamifoundation.org/m/${moment.id}`
 
       console.log('📤 Triggering WhatsApp broadcast to', recipientCount, 'subscribers')
 
