@@ -119,7 +119,7 @@ serve(async (req) => {
         .from('admin_sessions')
         .insert({
           token: sessionToken,
-          admin_user_id: admin.id,
+          user_id: admin.id,
           expires_at: expiresAt,
           created_at: new Date().toISOString()
         })
@@ -1230,78 +1230,60 @@ ${moment.content}
       })
     }
 
-    // Subscribers endpoint - query from messages table for WhatsApp users
+    // Subscribers endpoint
     if (path.includes('/subscribers') && method === 'GET') {
       const filter = url.searchParams.get('filter') || 'all'
       const page = parseInt(url.searchParams.get('page') || '1')
       const limit = parseInt(url.searchParams.get('limit') || '20')
       const offset = (page - 1) * limit
 
-      // Get unique WhatsApp users from messages table
-      const { data: messageUsers } = await supabase
-        .from('messages')
-        .select('from_number, created_at')
+      // Query directly from subscriptions table
+      let query = supabase
+        .from('subscriptions')
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
 
-      // Group by phone number and get latest activity
-      const userMap = new Map()
-      messageUsers?.forEach(msg => {
-        if (!userMap.has(msg.from_number)) {
-          userMap.set(msg.from_number, msg.created_at)
-        }
-      })
-
-      // Get subscription status for each user
-      const subscribers = await Promise.all(
-        Array.from(userMap.entries()).map(async ([phone, lastActivity]) => {
-          const { data: sub } = await supabase
-            .from('subscriptions')
-            .select('*')
-            .or(`phone_number.eq.${phone},phone_number.eq.+${phone}`)
-            .single()
-
-          return {
-            phone_number: phone.startsWith('+') ? phone : `+${phone}`,
-            opted_in: sub?.opted_in ?? true,
-            regions: sub?.regions || ['National'],
-            categories: sub?.categories || ['Education', 'Safety', 'Opportunity'],
-            language_preference: sub?.language_preference || 'eng',
-            opted_in_at: sub?.opted_in_at || lastActivity,
-            opted_out_at: sub?.opted_out_at,
-            last_activity: sub?.last_activity || lastActivity,
-            created_at: sub?.created_at || lastActivity
-          }
-        })
-      )
-
-      // Apply filter
-      let filteredSubs = subscribers
       if (filter === 'active') {
-        filteredSubs = subscribers.filter(s => s.opted_in)
+        query = query.eq('opted_in', true)
       } else if (filter === 'inactive') {
-        filteredSubs = subscribers.filter(s => !s.opted_in)
+        query = query.eq('opted_in', false)
       }
 
-      // Sort by last activity
-      filteredSubs.sort((a, b) => new Date(b.last_activity).getTime() - new Date(a.last_activity).getTime())
+      const { data: subscribers, count, error } = await query
+        .range(offset, offset + limit - 1)
 
-      // Paginate
-      const paginatedSubs = filteredSubs.slice(offset, offset + limit)
+      if (error) {
+        console.error('Subscribers query error:', error)
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
 
-      const total = subscribers.length
-      const active = subscribers.filter(s => s.opted_in).length
+      // Get stats
+      const { count: totalCount } = await supabase
+        .from('subscriptions')
+        .select('*', { count: 'exact', head: true })
+
+      const { count: activeCount } = await supabase
+        .from('subscriptions')
+        .select('*', { count: 'exact', head: true })
+        .eq('opted_in', true)
+
+      const total = totalCount || 0
+      const active = activeCount || 0
       const inactive = total - active
 
-      console.log(`📊 WhatsApp Subscribers: total=${total}, active=${active}, inactive=${inactive}`)
+      console.log(`📊 Subscribers: total=${total}, active=${active}, inactive=${inactive}`)
 
       return new Response(JSON.stringify({
-        subscribers: paginatedSubs,
+        subscribers: subscribers || [],
         stats: { total, active, inactive, commands_used: 0 },
         pagination: {
           page,
           limit,
-          total: filteredSubs.length,
-          totalPages: Math.ceil(filteredSubs.length / limit)
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / limit)
         }
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
