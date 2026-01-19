@@ -1104,7 +1104,8 @@ async function loadModeration(page = 1) {
 async function loadSubscribers() {
     try {
         const filter = document.getElementById('subscriber-filter')?.value || 'all';
-        const response = await apiFetch(`/subscribers?filter=${filter}`);
+        const cacheBust = `&_=${Date.now()}`;
+        const response = await apiFetch(`/subscribers?filter=${filter}${cacheBust}`);
         const data = await response.json();
         
         // Update stats
@@ -1197,12 +1198,7 @@ async function loadSubscribers() {
     }
 }
 
-// Auto-refresh subscribers every 5 seconds
-setInterval(() => {
-    if (document.getElementById('subscribers-list')?.offsetParent !== null) {
-        loadSubscribers().catch(console.warn);
-    }
-}, 5000);
+
 
 // Load settings
 async function loadSettings() {
@@ -2465,7 +2461,8 @@ window.checkCampaignCompliance = checkCampaignCompliance;
 // Authority Management Functions
 async function loadAuthorityProfiles() {
     try {
-        const response = await apiFetch('/authority');
+        const cacheBust = `?_=${Date.now()}`;
+        const response = await apiFetch(`/authority${cacheBust}`);
         const data = await response.json();
         displayAuthorityProfiles(data.authority_profiles || []);
     } catch (error) {
@@ -2474,12 +2471,7 @@ async function loadAuthorityProfiles() {
     }
 }
 
-// Auto-refresh authority every 5 seconds
-setInterval(() => {
-    if (document.getElementById('authority-list')?.offsetParent !== null) {
-        loadAuthorityProfiles().catch(console.warn);
-    }
-}, 5000);
+
 
 function displayAuthorityProfiles(profiles) {
     const list = document.getElementById('authority-list');
@@ -2540,6 +2532,9 @@ window.editAuthorityProfile = async function(profileId) {
 window.suspendAuthorityProfile = async function(profileId) {
     if (!confirm('Are you sure you want to suspend this authority profile?')) return;
     
+    const btn = event?.target;
+    if (btn) setButtonLoading(btn, true);
+    
     try {
         const response = await apiFetch(`/authority/${profileId}`, {
             method: 'PUT',
@@ -2553,10 +2548,15 @@ window.suspendAuthorityProfile = async function(profileId) {
         await loadAuthorityProfiles();
     } catch (error) {
         showNotification('Failed to suspend authority profile: ' + error.message, 'error');
+    } finally {
+        if (btn) setButtonLoading(btn, false);
     }
 };
 
 window.activateAuthorityProfile = async function(profileId) {
+    const btn = event?.target;
+    if (btn) setButtonLoading(btn, true);
+    
     try {
         const response = await apiFetch(`/authority/${profileId}`, {
             method: 'PUT',
@@ -2570,5 +2570,7 @@ window.activateAuthorityProfile = async function(profileId) {
         await loadAuthorityProfiles();
     } catch (error) {
         showNotification('Failed to activate authority profile: ' + error.message, 'error');
+    } finally {
+        if (btn) setButtonLoading(btn, false);
     }
 };
