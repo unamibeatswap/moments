@@ -2552,10 +2552,20 @@ window.suspendAuthorityProfile = async function(profileId) {
         
         showNotification('Authority profile suspended successfully', 'success');
         
+        // Force immediate UI update
+        const statusBadge = btn.closest('.moment-item').querySelector('.status-badge');
+        if (statusBadge) {
+            statusBadge.textContent = 'suspended';
+            statusBadge.className = 'status-badge status-suspended';
+        }
+        btn.textContent = 'Activate';
+        btn.className = 'btn btn-sm btn-success';
+        btn.onclick = () => activateAuthorityProfile(profileId);
+        
         // Clear cache and reload
         apiCallCache.clear();
         pendingCalls.clear();
-        await loadAuthorityProfiles();
+        setTimeout(() => loadAuthorityProfiles(), 500);
     } catch (error) {
         showNotification('Failed to suspend authority profile: ' + error.message, 'error');
     } finally {
@@ -2579,10 +2589,20 @@ window.activateAuthorityProfile = async function(profileId) {
         
         showNotification('Authority profile activated successfully', 'success');
         
+        // Force immediate UI update
+        const statusBadge = btn.closest('.moment-item').querySelector('.status-badge');
+        if (statusBadge) {
+            statusBadge.textContent = 'active';
+            statusBadge.className = 'status-badge status-active';
+        }
+        btn.textContent = 'Suspend';
+        btn.className = 'btn btn-sm btn-danger';
+        btn.onclick = () => suspendAuthorityProfile(profileId);
+        
         // Clear cache and reload
         apiCallCache.clear();
         pendingCalls.clear();
-        await loadAuthorityProfiles();
+        setTimeout(() => loadAuthorityProfiles(), 500);
     } catch (error) {
         showNotification('Failed to activate authority profile: ' + error.message, 'error');
     } finally {
