@@ -25,10 +25,13 @@ async function apiFetch(path, opts = {}) {
     }
     
     const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
+    
+    // Skip pendingCalls cache for authority and subscribers to ensure real-time updates
+    const skipCache = url.includes('/authority') || url.includes('/subscribers');
     const cacheKey = `${opts.method || 'GET'}_${url}`;
     
-    // Return pending call if one exists
-    if (pendingCalls.has(cacheKey)) {
+    // Return pending call if one exists (unless skipping cache)
+    if (!skipCache && pendingCalls.has(cacheKey)) {
         return pendingCalls.get(cacheKey);
     }
     
@@ -49,8 +52,10 @@ async function apiFetch(path, opts = {}) {
         throw error;
     });
     
-    // Store pending call
-    pendingCalls.set(cacheKey, fetchPromise);
+    // Store pending call (unless skipping cache)
+    if (!skipCache) {
+        pendingCalls.set(cacheKey, fetchPromise);
+    }
     
     return fetchPromise;
 }
@@ -2462,14 +2467,7 @@ window.checkCampaignCompliance = checkCampaignCompliance;
 async function loadAuthorityProfiles() {
     try {
         const cacheBust = `?_=${Date.now()}`;
-        const response = await fetch(`${API_BASE}/authority${cacheBust}`, {
-            headers: {
-                'Authorization': `Bearer ${getAuthToken()}`,
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Expires': '0'
-            }
-        });
+        const response = await apiFetch(`/authority${cacheBust}`);
         const data = await response.json();
         displayAuthorityProfiles(data.authority_profiles || []);
     } catch (error) {
