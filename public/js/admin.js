@@ -1197,6 +1197,13 @@ async function loadSubscribers() {
     }
 }
 
+// Auto-refresh subscribers every 10 seconds
+setInterval(() => {
+    if (document.getElementById('subscribers-list')?.offsetParent !== null) {
+        loadSubscribers().catch(console.warn);
+    }
+}, 10000);
+
 // Load settings
 async function loadSettings() {
     try {
@@ -2466,6 +2473,13 @@ async function loadAuthorityProfiles() {
         if (list) list.innerHTML = '<div class="error">Failed to load authority profiles</div>';
     }
 }
+
+// Auto-refresh authority every 10 seconds
+setInterval(() => {
+    if (document.getElementById('authority-list')?.offsetParent !== null) {
+        loadAuthorityProfiles().catch(console.warn);
+    }
+}, 10000);
 
 function displayAuthorityProfiles(profiles) {
     const list = document.getElementById('authority-list');
