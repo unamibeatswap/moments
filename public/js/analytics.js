@@ -93,5 +93,6 @@ class UnamiAnalytics {
 }
 
 // Initialize analytics (privacy-first)
-const analytics = new UnamiAnalytics();
+const analytics = window.analytics || new UnamiAnalytics();
+window.analytics = analytics;
 analytics.init();
