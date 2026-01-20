@@ -1003,6 +1003,39 @@ ${moment.content}
       })
     }
 
+    // Update sponsor
+    if (path.match(/\/sponsors\/[a-f0-9-]{36}$/) && method === 'PUT' && body) {
+      const sponsorId = path.split('/sponsors/')[1]
+      const cleanBody = {
+        name: body.name,
+        display_name: body.display_name,
+        contact_email: body.contact_email || null,
+        website_url: body.website_url || null,
+        logo_url: body.logo_url || null,
+        tier: body.tier || 'bronze',
+        active: body.active !== undefined ? body.active : true
+      }
+
+      const { data, error } = await supabase
+        .from('sponsors')
+        .update(cleanBody)
+        .eq('id', sponsorId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Sponsor update error:', error)
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      return new Response(JSON.stringify({ sponsor: data }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     // Settings endpoint
     if (path.includes('/settings') && method === 'GET') {
       const { data: settings } = await supabase
