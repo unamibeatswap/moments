@@ -72,6 +72,11 @@ const validators = {
 };
 
 function validateField(field) {
+    // Skip validation for file inputs and hidden fields
+    if (field.type === 'file' || field.type === 'hidden') {
+        return true;
+    }
+    
     const value = field.value.trim();
     const type = field.type;
     const required = field.required;
