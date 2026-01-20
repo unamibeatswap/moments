@@ -1606,7 +1606,7 @@
             const formData = new FormData();
             formData.append('media_files', file);
             try {
-                const response = await fetch('/admin/upload-media', {
+                const response = await fetch(`${window.API_BASE_URL}/upload-media`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('admin.auth.token')}` },
                     body: formData
