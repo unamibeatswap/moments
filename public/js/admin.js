@@ -97,7 +97,6 @@ function showSection(sectionId) {
             case 'moments': loadMoments().catch(console.warn); break;
             case 'campaigns': 
                 loadCampaigns().catch(console.warn);
-                loadSponsorsForCampaign().catch(console.warn);
                 break;
             case 'sponsors': loadSponsors().catch(console.warn); break;
             case 'subscribers': loadSubscribers().catch(console.warn); break;

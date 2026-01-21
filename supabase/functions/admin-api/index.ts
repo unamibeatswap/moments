@@ -1037,6 +1037,28 @@ ${moment.content}
       })
     }
 
+    // Delete sponsor
+    if (path.match(/\/sponsors\/[a-f0-9-]{36}$/) && method === 'DELETE') {
+      const sponsorId = path.split('/sponsors/')[1]
+      
+      const { error } = await supabase
+        .from('sponsors')
+        .delete()
+        .eq('id', sponsorId)
+
+      if (error) {
+        console.error('Sponsor delete error:', error)
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     // Settings endpoint
     if (path.includes('/settings') && method === 'GET') {
       const { data: settings } = await supabase
