@@ -707,7 +707,8 @@ async function broadcastMoment(momentId) {
 // Load sponsors
 async function loadSponsors() {
     try {
-        const response = await apiFetch('/sponsors');
+        const cacheBust = `?_=${Date.now()}`;
+        const response = await apiFetch(`/sponsors${cacheBust}`);
         const data = await response.json();
         
         const sponsorSelect = document.getElementById('sponsor-select');
@@ -1973,9 +1974,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Sponsor logo preview functionality
-    const sponsorLogoInput = document.getElementById('sponsor-logo-file');
+    const sponsorLogoInput = document.getElementById('sponsor-logo-file-inline');
     if (sponsorLogoInput) {
         sponsorLogoInput.addEventListener('change', handleSponsorLogoPreview);
+    }
+    
+    // Campaign media preview functionality
+    const campaignMediaInput = document.getElementById('campaign_media_inline');
+    if (campaignMediaInput) {
+        campaignMediaInput.addEventListener('change', handleCampaignMediaPreview);
     }
     
     const createForm = document.getElementById('create-form');
@@ -2109,9 +2116,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (logoFile && logoFile.size > 0) {
                     try {
                         // Show upload progress
-                        const logoPreview = document.getElementById('sponsor-logo-preview');
-                        const logoProgressBar = document.getElementById('sponsor-upload-progress-bar');
-                        const logoProgress = document.getElementById('sponsor-upload-progress');
+                        const logoPreview = document.getElementById('sponsor-logo-preview-inline');
+                        const logoProgressBar = document.getElementById('sponsor-upload-progress-bar-inline');
+                        const logoProgress = document.getElementById('sponsor-upload-progress-inline');
                         
                         if (logoProgress) logoProgress.style.display = 'block';
                         if (logoProgressBar) logoProgressBar.style.width = '10%';
@@ -2209,6 +2216,14 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (mediaFiles && mediaFiles.length > 0 && mediaFiles[0].size > 0) {
                 try {
+                    // Show upload progress
+                    const progressEl = document.getElementById('campaign-upload-progress');
+                    const progressBar = document.getElementById('campaign-upload-progress-bar');
+                    if (progressEl && progressBar) {
+                        progressEl.style.display = 'block';
+                        progressBar.style.width = '10%';
+                    }
+                    
                     const mediaFormData = new FormData();
                     mediaFiles.forEach(file => {
                         if (file.size > 0) {
@@ -2221,14 +2236,24 @@ document.addEventListener('DOMContentLoaded', () => {
                         body: mediaFormData
                     });
                     
+                    if (progressBar) progressBar.style.width = '90%';
+                    
                     const uploadResult = await uploadResponse.json();
                     if (uploadResult.success) {
                         mediaUrls = uploadResult.files.map(f => f.publicUrl);
                         showSuccess(`${uploadResult.files.length} media file(s) uploaded`);
+                        if (progressBar) progressBar.style.width = '100%';
                     }
+                    
+                    // Hide progress after delay
+                    setTimeout(() => {
+                        if (progressEl) progressEl.style.display = 'none';
+                    }, 1000);
                 } catch (uploadError) {
                     console.error('Media upload failed:', uploadError);
                     showError('Media upload failed, but campaign will be saved without media');
+                    const progressEl = document.getElementById('campaign-upload-progress');
+                    if (progressEl) progressEl.style.display = 'none';
                 }
             }
             
@@ -2243,9 +2268,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const primaryRegion = data.primary_region;
             const primaryCategory = data.primary_category;
             
-            // Get additional selections
-            const additionalRegions = Array.from(document.querySelectorAll('input[name="target_regions"]:checked')).map(cb => cb.value);
-            const additionalCategories = Array.from(document.querySelectorAll('input[name="target_categories"]:checked')).map(cb => cb.value);
+            // Get additional selections from multi-select
+            const regionSelect = form.querySelector('select[name="target_regions"]');
+            const categorySelect = form.querySelector('select[name="target_categories"]');
+            
+            const additionalRegions = regionSelect ? Array.from(regionSelect.selectedOptions).map(opt => opt.value) : [];
+            const additionalCategories = categorySelect ? Array.from(categorySelect.selectedOptions).map(opt => opt.value) : [];
             
             // Combine primary + additional (remove duplicates)
             const allRegions = [primaryRegion, ...additionalRegions].filter((v, i, a) => v && a.indexOf(v) === i);
@@ -2377,8 +2405,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function handleSponsorLogoPreview(event) {
     const files = event.target.files;
-    const preview = document.getElementById('sponsor-logo-preview');
-    const previewList = document.getElementById('sponsor-logo-preview-list');
+    const preview = document.getElementById('sponsor-logo-preview-inline');
+    const previewList = document.getElementById('sponsor-logo-preview-list-inline');
     
     if (files.length === 0) {
         preview.style.display = 'none';
@@ -2407,10 +2435,57 @@ function handleSponsorLogoPreview(event) {
 }
 
 function clearSponsorLogo() {
-    const input = document.getElementById('sponsor-logo-file');
-    const preview = document.getElementById('sponsor-logo-preview');
+    const input = document.getElementById('sponsor-logo-file-inline');
+    const preview = document.getElementById('sponsor-logo-preview-inline');
     input.value = '';
     preview.style.display = 'none';
+}
+
+// Campaign media preview handler
+function handleCampaignMediaPreview(event) {
+    const files = event.target.files;
+    const preview = document.getElementById('campaign-media-preview');
+    const previewList = document.getElementById('campaign-media-preview-list');
+    
+    if (files.length === 0) {
+        preview.style.display = 'none';
+        return;
+    }
+    
+    preview.style.display = 'block';
+    previewList.innerHTML = '';
+    
+    Array.from(files).forEach((file, index) => {
+        const fileItem = document.createElement('div');
+        fileItem.style.cssText = 'display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0; border-bottom: 1px solid #e5e7eb;';
+        
+        const fileIcon = getFileIcon(file.type);
+        const fileSize = formatFileSize(file.size);
+        
+        fileItem.innerHTML = `
+            <span style="font-size: 1.25rem;">${fileIcon}</span>
+            <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 0.875rem; font-weight: 500; truncate;">${file.name}</div>
+                <div style="font-size: 0.75rem; color: #6b7280;">${fileSize} • ${file.type}</div>
+            </div>
+            <button type="button" onclick="removeCampaignFile(${index})" style="background: none; border: none; color: #dc2626; cursor: pointer; padding: 0.25rem;">✕</button>
+        `;
+        
+        previewList.appendChild(fileItem);
+    });
+}
+
+function removeCampaignFile(index) {
+    const input = document.getElementById('campaign_media_inline');
+    const dt = new DataTransfer();
+    const files = Array.from(input.files);
+    
+    files.forEach((file, i) => {
+        if (i !== index) dt.items.add(file);
+    });
+    
+    input.files = dt.files;
+    handleCampaignMediaPreview({ target: input });
 }
 
 // Load more campaigns function

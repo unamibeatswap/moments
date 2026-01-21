@@ -49,7 +49,8 @@ if (path.includes('/campaigns/') && path.includes('/broadcast') && method === 'P
     }
 
     const recipientCount = subscribers.length
-    const estimatedCost = recipientCount * 0.12
+    const MESSAGE_COST = parseFloat(Deno.env.get('MESSAGE_COST') || '0.65')
+    const estimatedCost = recipientCount * MESSAGE_COST
 
     // Check budget
     if (campaign.budget > 0) {
@@ -170,14 +171,14 @@ if (path.includes('/campaigns/') && path.includes('/broadcast') && method === 'P
         console.log('✅ Broadcast triggered')
         
         // Log budget transaction (estimate, actual will be updated by webhook)
-        const actualCost = recipientCount * 0.12
+        const actualCost = recipientCount * MESSAGE_COST
         
         await supabase.from('budget_transactions').insert({
           campaign_id: campaignId,
           transaction_type: 'spend',
           amount: actualCost,
           recipient_count: recipientCount,
-          cost_per_recipient: 0.12,
+          cost_per_recipient: MESSAGE_COST,
           description: `Campaign: ${campaign.title}`
         })
 
@@ -186,7 +187,7 @@ if (path.includes('/campaigns/') && path.includes('/broadcast') && method === 'P
           p_campaign_id: campaignId,
           p_recipient_count: recipientCount,
           p_cost: actualCost
-        })
+        });
 
         // Log template performance
         await supabase.rpc('log_template_performance', {

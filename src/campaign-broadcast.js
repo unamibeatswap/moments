@@ -2,7 +2,8 @@ import { supabase } from '../config/supabase.js';
 import { sendTemplateMessage } from '../config/whatsapp.js';
 import { selectTemplate, buildTemplateParams, validateMarketingCompliance } from './whatsapp-templates-marketing.js';
 
-const MESSAGE_COST = 0.12; // R0.12 per message
+// Message cost is configurable via system settings (R0.65-R0.70 per message)
+const MESSAGE_COST = parseFloat(process.env.MESSAGE_COST || '0.65');
 
 // Enhanced campaign broadcast with full integration
 export async function broadcastCampaign(campaignId, adminUser = 'system') {
@@ -20,13 +21,8 @@ export async function broadcastCampaign(campaignId, adminUser = 'system') {
       throw new Error('Campaign not found');
     }
 
-    // Lookup authority for campaign creator
-    const { data: authorityData } = await supabase.rpc('lookup_campaign_authority', {
-      p_user_identifier: campaign.created_by || 'system'
-    });
-    
-    const authorityContext = authorityData?.[0] || null;
-    console.log('👤 Authority context:', authorityContext?.role_label || 'None');
+    // Campaigns are admin-created, no authority lookup needed
+    console.log('📋 Campaign created by admin:', campaign.created_by || 'system');
 
     // Get active subscribers
     let subscriberQuery = supabase
@@ -41,12 +37,6 @@ export async function broadcastCampaign(campaignId, adminUser = 'system') {
 
     const { data: allSubscribers } = await subscriberQuery;
     let subscribers = allSubscribers || [];
-
-    // Apply authority blast radius limit
-    if (authorityContext?.blast_radius && subscribers.length > authorityContext.blast_radius) {
-      console.log(`⚠️ Applying blast radius limit: ${authorityContext.blast_radius}`);
-      subscribers = subscribers.slice(0, authorityContext.blast_radius);
-    }
 
     const recipientCount = subscribers.length;
     const estimatedCost = recipientCount * MESSAGE_COST;
@@ -94,9 +84,9 @@ export async function broadcastCampaign(campaignId, adminUser = 'system') {
 
     console.log('📝 Moment created:', moment.id);
 
-    // Select template based on authority
-    const template = selectTemplate(moment, authorityContext, campaign.sponsors);
-    const templateParams = buildTemplateParams(moment, authorityContext, campaign.sponsors);
+    // Select template based on sponsor presence (admin campaigns)
+    const template = selectTemplate(moment, null, campaign.sponsors);
+    const templateParams = buildTemplateParams(moment, null, campaign.sponsors);
     
     console.log('📋 Using template:', template.name);
 
@@ -111,12 +101,7 @@ export async function broadcastCampaign(campaignId, adminUser = 'system') {
         moment_id: moment.id,
         recipient_count: recipientCount,
         status: 'processing',
-        broadcast_started_at: new Date().toISOString(),
-        authority_context: authorityContext ? {
-          authority_level: authorityContext.authority_level,
-          role_label: authorityContext.role_label,
-          blast_radius: authorityContext.blast_radius
-        } : null
+        broadcast_started_at: new Date().toISOString()
       })
       .select()
       .single();
@@ -196,11 +181,10 @@ export async function broadcastCampaign(campaignId, adminUser = 'system') {
       p_cost: actualCost
     });
 
-    // Log template performance
+    // Log template performance (campaigns don't have authority)
     await supabase.rpc('log_template_performance', {
       p_template_name: template.name,
       p_campaign_id: campaignId,
-      p_authority_level: authorityContext?.authority_level || 0,
       p_sends: recipientCount,
       p_deliveries: successCount,
       p_failures: failureCount,
@@ -228,7 +212,6 @@ export async function broadcastCampaign(campaignId, adminUser = 'system') {
       failed: failureCount,
       cost: actualCost,
       template: template.name,
-      authority_level: authorityContext?.authority_level || 0,
       compliance_score: compliance.compliance_score
     };
 

@@ -134,24 +134,30 @@ export const MARKETING_TEMPLATES = {
   }
 };
 
-// Template selector based on authority context
+// Template selector - campaigns use sponsor presence, WhatsApp moments use authority
 export function selectTemplate(moment, authorityContext, sponsor = null) {
-  // High authority (Level 4-5) - Official announcements
-  if (authorityContext?.authority_level >= 4) {
-    return MARKETING_TEMPLATES.OFFICIAL_ANNOUNCEMENT;
-  }
-  
-  // Verified authority with sponsor
-  if (authorityContext && sponsor) {
-    return MARKETING_TEMPLATES.VERIFIED_SPONSORED_MOMENT;
-  }
-  
-  // Verified authority without sponsor
+  // For WhatsApp-submitted moments: Use authority-based selection
   if (authorityContext) {
+    // High authority (Level 4-5) - Official announcements
+    if (authorityContext.authority_level >= 4) {
+      return MARKETING_TEMPLATES.OFFICIAL_ANNOUNCEMENT;
+    }
+    
+    // Verified authority with sponsor
+    if (sponsor) {
+      return MARKETING_TEMPLATES.VERIFIED_SPONSORED_MOMENT;
+    }
+    
+    // Verified authority without sponsor
     return MARKETING_TEMPLATES.VERIFIED_MOMENT;
   }
   
-  // Community content (no authority)
+  // For admin campaigns: Use sponsor presence only
+  if (sponsor) {
+    return MARKETING_TEMPLATES.VERIFIED_SPONSORED_MOMENT;
+  }
+  
+  // Community content (no authority, no sponsor)
   return MARKETING_TEMPLATES.COMMUNITY_MOMENT;
 }
 

@@ -129,24 +129,6 @@
             /* Show inline form sections instead on mobile */
             .form-section { display: none; }
             .form-section.active { display: block; }
-            
-            /* Hide checkboxes on mobile - use dropdowns instead */
-            .checkbox-group { display: none; }
-            .dropdown-group { display: block; }
-            
-            /* Better form spacing on mobile */
-            .form-group { margin-bottom: 1rem; }
-            .form-group input, .form-group textarea, .form-group select {
-                width: 100%;
-                padding: 0.75rem;
-                font-size: 1rem;
-            }
-        }
-        
-        /* Desktop - show modals normally */
-        @media (min-width: 769px) {
-            .checkbox-group { display: block; }
-            .dropdown-group { display: none; }
         }
         
         @media (max-width: 768px) {
@@ -641,7 +623,7 @@
                         <label>Budget (R)</label>
                         <div style="position: relative;">
                             <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #6b7280; font-weight: 500;">R</span>
-                            <input type="number" name="budget" min="0" step="100" placeholder="5000" style="padding-left: 2rem;">
+                            <input type="number" name="budget" min="0" step="1" placeholder="5000" style="padding-left: 2rem;">
                         </div>
                         <small style="color: #6b7280;">Campaign budget in South African Rand</small>
                     </div>
@@ -684,71 +666,48 @@
                         <small style="color: #6b7280;">Prohibited categories are hidden to prevent account suspension</small>
                     </div>
                     
-                    <!-- Desktop: Checkboxes -->
-                    <div class="checkbox-group">
-                        <div class="form-group">
-                            <label>Additional Regions (optional)</label>
-                            <div style="max-height: 120px; overflow-y: auto; border: 1px solid #d1d5db; border-radius: 0.375rem; padding: 0.5rem;">
-                                <label style="display: block; margin-bottom: 0.25rem;"><input type="checkbox" name="target_regions" value="KZN" style="margin-right: 0.5rem;"> KwaZulu-Natal</label>
-                                <label style="display: block; margin-bottom: 0.25rem;"><input type="checkbox" name="target_regions" value="WC" style="margin-right: 0.5rem;"> Western Cape</label>
-                                <label style="display: block; margin-bottom: 0.25rem;"><input type="checkbox" name="target_regions" value="GP" style="margin-right: 0.5rem;"> Gauteng</label>
-                                <label style="display: block; margin-bottom: 0.25rem;"><input type="checkbox" name="target_regions" value="EC" style="margin-right: 0.5rem;"> Eastern Cape</label>
-                                <label style="display: block; margin-bottom: 0.25rem;"><input type="checkbox" name="target_regions" value="FS" style="margin-right: 0.5rem;"> Free State</label>
-                                <label style="display: block; margin-bottom: 0.25rem;"><input type="checkbox" name="target_regions" value="LP" style="margin-right: 0.5rem;"> Limpopo</label>
-                                <label style="display: block; margin-bottom: 0.25rem;"><input type="checkbox" name="target_regions" value="MP" style="margin-right: 0.5rem;"> Mpumalanga</label>
-                                <label style="display: block; margin-bottom: 0.25rem;"><input type="checkbox" name="target_regions" value="NC" style="margin-right: 0.5rem;"> Northern Cape</label>
-                                <label style="display: block; margin-bottom: 0.25rem;"><input type="checkbox" name="target_regions" value="NW" style="margin-right: 0.5rem;"> North West</label>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Additional Categories (optional)</label>
-                            <div style="max-height: 100px; overflow-y: auto; border: 1px solid #d1d5db; border-radius: 0.375rem; padding: 0.5rem;">
-                                <label style="display: block; margin-bottom: 0.25rem;"><input type="checkbox" name="target_categories" value="Education" style="margin-right: 0.5rem;"> Education</label>
-                                <label style="display: block; margin-bottom: 0.25rem;"><input type="checkbox" name="target_categories" value="Safety" style="margin-right: 0.5rem;"> Safety</label>
-                                <label style="display: block; margin-bottom: 0.25rem;"><input type="checkbox" name="target_categories" value="Culture" style="margin-right: 0.5rem;"> Culture</label>
-                                <label style="display: block; margin-bottom: 0.25rem;"><input type="checkbox" name="target_categories" value="Opportunity" style="margin-right: 0.5rem;"> Opportunity</label>
-                                <label style="display: block; margin-bottom: 0.25rem;"><input type="checkbox" name="target_categories" value="Events" style="margin-right: 0.5rem;"> Events</label>
-                                <label style="display: block; margin-bottom: 0.25rem;"><input type="checkbox" name="target_categories" value="Health" style="margin-right: 0.5rem;"> Health</label>
-                                <label style="display: block; margin-bottom: 0.25rem;"><input type="checkbox" name="target_categories" value="Technology" style="margin-right: 0.5rem;"> Technology</label>
-                            </div>
-                        </div>
+                    <div class="form-group">
+                        <label>Additional Regions (optional)</label>
+                        <select name="target_regions" multiple size="5" style="width: 100%;">
+                            <option value="KZN">KwaZulu-Natal</option>
+                            <option value="WC">Western Cape</option>
+                            <option value="GP">Gauteng</option>
+                            <option value="EC">Eastern Cape</option>
+                            <option value="FS">Free State</option>
+                            <option value="LP">Limpopo</option>
+                            <option value="MP">Mpumalanga</option>
+                            <option value="NC">Northern Cape</option>
+                            <option value="NW">North West</option>
+                        </select>
+                        <small style="color: #6b7280;">Hold Ctrl/Cmd to select multiple regions</small>
                     </div>
-                    
-                    <!-- Mobile: Dropdowns -->
-                    <div class="dropdown-group">
-                        <div class="form-group">
-                            <label>Additional Regions (optional)</label>
-                            <select name="target_regions" multiple size="5">
-                                <option value="KZN">KwaZulu-Natal</option>
-                                <option value="WC">Western Cape</option>
-                                <option value="GP">Gauteng</option>
-                                <option value="EC">Eastern Cape</option>
-                                <option value="FS">Free State</option>
-                                <option value="LP">Limpopo</option>
-                                <option value="MP">Mpumalanga</option>
-                                <option value="NC">Northern Cape</option>
-                                <option value="NW">North West</option>
-                            </select>
-                            <small style="color: #6b7280;">Hold Ctrl/Cmd to select multiple</small>
-                        </div>
-                        <div class="form-group">
-                            <label>Additional Categories (optional)</label>
-                            <select name="target_categories" multiple size="5">
-                                <option value="Education">Education</option>
-                                <option value="Safety">Safety</option>
-                                <option value="Culture">Culture</option>
-                                <option value="Opportunity">Opportunity</option>
-                                <option value="Events">Events</option>
-                                <option value="Health">Health</option>
-                                <option value="Technology">Technology</option>
-                            </select>
-                            <small style="color: #6b7280;">Hold Ctrl/Cmd to select multiple</small>
-                        </div>
+                    <div class="form-group">
+                        <label>Additional Categories (optional)</label>
+                        <select name="target_categories" multiple size="5" style="width: 100%;">
+                            <option value="Education">Education</option>
+                            <option value="Safety">Safety</option>
+                            <option value="Culture">Culture</option>
+                            <option value="Opportunity">Opportunity</option>
+                            <option value="Events">Events</option>
+                            <option value="Health">Health</option>
+                            <option value="Technology">Technology</option>
+                        </select>
+                        <small style="color: #6b7280;">Hold Ctrl/Cmd to select multiple categories</small>
                     </div>
                     
                     <div class="form-group">
                         <label>Campaign Media (optional)</label>
                         <input type="file" name="campaign_media" id="campaign_media_inline" multiple accept="image/*,video/*,audio/*">
+                        <div id="campaign-media-preview" style="display: none; margin-top: 0.5rem; padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background: #f8fafc;">
+                            <div style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Selected Files:</div>
+                            <div id="campaign-media-preview-list"></div>
+                            <div id="campaign-upload-progress" style="display: none; margin-top: 0.5rem;">
+                                <div style="background: #e5e7eb; border-radius: 0.25rem; overflow: hidden;">
+                                    <div id="campaign-upload-progress-bar" style="background: #2563eb; height: 4px; width: 0%; transition: width 0.3s;"></div>
+                                </div>
+                                <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">Uploading files...</div>
+                            </div>
+                        </div>
                         <small style="color: #6b7280;">Upload images, videos, or audio for the campaign</small>
                     </div>
                     <div class="form-group">
@@ -795,12 +754,12 @@
                     <div class="form-group">
                         <label>Logo Upload</label>
                         <input type="file" name="logo_file" id="sponsor-logo-file-inline" accept="image/*">
-                        <div id="sponsor-logo-preview" style="display: none; margin-top: 0.5rem; padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background: #f8fafc;">
+                        <div id="sponsor-logo-preview-inline" style="display: none; margin-top: 0.5rem; padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background: #f8fafc;">
                             <div style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Selected Logo:</div>
-                            <div id="sponsor-logo-preview-list"></div>
-                            <div id="sponsor-upload-progress" style="display: none; margin-top: 0.5rem;">
+                            <div id="sponsor-logo-preview-list-inline"></div>
+                            <div id="sponsor-upload-progress-inline" style="display: none; margin-top: 0.5rem;">
                                 <div style="background: #e5e7eb; border-radius: 0.25rem; overflow: hidden;">
-                                    <div id="sponsor-upload-progress-bar" style="background: #2563eb; height: 4px; width: 0%; transition: width 0.3s;"></div>
+                                    <div id="sponsor-upload-progress-bar-inline" style="background: #2563eb; height: 4px; width: 0%; transition: width 0.3s;"></div>
                                 </div>
                                 <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">Uploading logo...</div>
                             </div>
@@ -1677,8 +1636,6 @@
     <script src="/js/ai-insights.js?v=2.0.4"></script>
     <script src="/js/chart.min.js"></script>
     <script src="/js/admin.js?v=1.2.0"></script>
-    <script src="/js/analytics.js?v=2.0.5"></script>
-    <script src="/js/sponsors-loader.js?v=2.0.5"></script>
     <script src="/js/compliance.js"></script>
     <script src="/js/admin-header-enhance.js"></script>
     <script>

@@ -720,7 +720,7 @@ router.post('/campaigns', requireRole(['content_admin','superadmin']), async (re
 
     const { data, error } = await supabase
       .from('campaigns')
-      .insert({ title: cleanTitle, content: cleanContent, sponsor_id: cleanSponsor, budget: cleanBudget, target_regions: cleanRegions, target_categories: cleanCategories, media_urls: cleanMedia, scheduled_at: cleanScheduled, created_by, status: cleanScheduled ? 'scheduled' : 'pending_review' })
+      .insert({ title: cleanTitle, content: cleanContent, sponsor_id: cleanSponsor, budget: cleanBudget, target_regions: cleanRegions, target_categories: cleanCategories, media_urls: cleanMedia, scheduled_at: cleanScheduled, status: cleanScheduled ? 'scheduled' : 'pending_review' })
       .select()
       .single();
 
@@ -1426,6 +1426,52 @@ router.get('/authority/lookup/:user_identifier', async (req, res) => {
       user_identifier,
       authority: authority,
       has_authority: !!authority
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Compliance check endpoint
+router.post('/compliance/check', async (req, res) => {
+  try {
+    const { title, content, category } = req.body;
+    
+    // Simple rule-based compliance check
+    const violations = [];
+    let riskScore = 0;
+    
+    const text = `${title} ${content}`.toLowerCase();
+    
+    // Check for prohibited content
+    const prohibited = ['vote', 'election', 'political party', 'loan', 'investment', 'cryptocurrency', 'cure', 'treatment', 'gambling', 'bet', 'lottery'];
+    prohibited.forEach(word => {
+      if (text.includes(word)) {
+        violations.push(`Contains prohibited term: "${word}"`);
+        riskScore += 30;
+      }
+    });
+    
+    // Check category risk
+    const restrictedCategories = ['Government Services', 'Financial Literacy', 'Healthcare Services', 'Religious Events'];
+    if (restrictedCategories.includes(category)) {
+      riskScore += 20;
+    }
+    
+    const isCompliant = violations.length === 0 && riskScore < 50;
+    const violationSeverity = riskScore >= 70 ? 'SUSPEND' : riskScore >= 40 ? 'WARN' : 'SAFE';
+    
+    res.json({
+      compliance: {
+        is_compliant: isCompliant,
+        risk_score: Math.min(riskScore, 100),
+        violation_severity: violationSeverity,
+        violations: violations,
+        requires_approval: riskScore >= 40,
+        recommendation: isCompliant ? 
+          'Content is compliant with Meta policies' : 
+          'Content requires review before broadcasting'
+      }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

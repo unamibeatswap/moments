@@ -117,12 +117,9 @@ function showCategoryRisk(event) {
 // Check campaign compliance in real-time
 async function checkCampaignCompliance(title, content, category) {
     try {
-        const response = await fetch('/supabase/functions/v1/admin-api/compliance/check', {
+        const response = await apiFetch('/compliance/check', {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('admin.auth.token')}`,
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 title: title || '',
                 content: content || '',
