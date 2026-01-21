@@ -959,15 +959,16 @@ ${moment.content}
 
     // Enhanced sponsors with branding
     if (path.includes('/sponsors') && method === 'GET') {
-      const { data: sponsors } = await supabase
+      const { data: sponsors, error: sponsorsError } = await supabase
         .from('sponsors')
-        .select(`
-          *,
-          sponsor_assets(*)
-        `)
-        .order('tier DESC, name')
+        .select('*')
+        .order('name')
 
-      return new Response(JSON.stringify({ sponsors: sponsors || [] }), {
+      if (sponsorsError) {
+        console.error('Sponsors query error:', sponsorsError)
+      }
+
+      return new Response(JSON.stringify({ sponsors: sponsors || [], error: sponsorsError?.message }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
